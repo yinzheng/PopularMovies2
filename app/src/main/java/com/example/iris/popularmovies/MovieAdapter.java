@@ -21,7 +21,6 @@ public class MovieAdapter extends ArrayAdapter<Movie> {
 
     public MovieAdapter (Activity context, List<Movie> movies) {
         super(context, 0, movies);
-        Log.v(LOG_TAG, movies.toString());
     }
 
     @Override
@@ -44,9 +43,6 @@ public class MovieAdapter extends ArrayAdapter<Movie> {
 
         Movie movie = getItem(position);
         Picasso.with(getContext()).load(movie.getPosterPath()).into(viewHolder.posterView);
-
-        Log.v(LOG_TAG, String.valueOf(position));
-        Log.v(LOG_TAG, movie.toString());
 
         return convertView;
     }

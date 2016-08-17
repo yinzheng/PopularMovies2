@@ -38,9 +38,6 @@ public class MoviesFragment extends Fragment {
     private final String MOVIE_LIST = "MOVIES";
     private final String LOG_TAG = MoviesFragment.class.getSimpleName();
 
-    public MoviesFragment() {
-    }
-
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -51,10 +48,6 @@ public class MoviesFragment extends Fragment {
             mMovieList = savedInstanceState.getParcelableArrayList(MOVIE_LIST);
         }
 
-        mMovieAdapter = new MovieAdapter(
-                getActivity(),
-                mMovieList);
-
     }
 
     @Override
@@ -64,12 +57,19 @@ public class MoviesFragment extends Fragment {
     }
 
     @Override
+    public void onResume() {
+        super.onResume();
+
+        String sortOrder = Utility.getPreferedSortOrder(getContext());
+        new FetchMovieTask(getContext()).execute(sortOrder);
+    }
+
+    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
 
-        new FetchMovieTask(getContext()).execute();
-
         View rootView = inflater.inflate(R.layout.fragment_movies, container, false);
+        mMovieAdapter = new MovieAdapter( getActivity(), mMovieList);
 
         GridView movieGridView = (GridView) rootView.findViewById(R.id.grid_movies);
         movieGridView.setAdapter(mMovieAdapter);
@@ -84,8 +84,6 @@ public class MoviesFragment extends Fragment {
                 startActivity(detailIntent);
             }
         });
-
-
 
         return rootView;
     }
@@ -153,6 +151,7 @@ public class MoviesFragment extends Fragment {
 
                     movieList.add(new Movie(
                             movieId,
+                            title,
                             originalTitle,
                             releaseDate,
                             overview,
@@ -177,16 +176,12 @@ public class MoviesFragment extends Fragment {
             BufferedReader reader;
 
             String movieJsonStr;
-            String listType;
+            String listType = params[0];
 
             try {
                 final String MOVIES_BASE_URL = "https://api.themoviedb.org/3";
                 final String MOVIE_PATH = "movie";
-                final String POPULAR_PATH = "popular";
-                final String TOP_RATED_PATH = "top_rated";
                 final String API_KEY_PARAM = "api_key";
-
-                listType = POPULAR_PATH;
 
                 Uri builtUri = Uri.parse(MOVIES_BASE_URL).buildUpon()
                         .appendPath(MOVIE_PATH)
@@ -238,10 +233,12 @@ public class MoviesFragment extends Fragment {
         @Override
         protected void onPostExecute(ArrayList<Movie> movies) {
             if(movies != null) {
-                Log.v(LOG_TAG, movies.toString());
                 mMovieList = movies;
                 mMovieAdapter.clear();
-                mMovieAdapter.addAll(movies);
+
+                for (Movie movie: movies) {
+                    mMovieAdapter.add(movie);
+                }
             }
         }
     }

@@ -39,12 +39,13 @@ public class DetailActivityFragment extends Fragment {
             TextView detailReleaseDate = (TextView) rootView.findViewById(R.id.detail_movie_release_date);
             TextView detailVotedAverage = (TextView) rootView.findViewById(R.id.detail_movie_voted_average);
 
-            getActivity().setTitle(movie.getOriginalTitle()); // set title for the detail view
+            getActivity().setTitle(movie.getTitle()); // set title for the detail view
 
             Picasso.with(getContext()).load(movie.getPosterPath()).into(detailPoster);
             detailTitle.setText(movie.getOriginalTitle());
             detailOverview.setText(movie.getOverview());
-            detailReleaseDate.setText(movie.getReleaseDate());
+
+            detailReleaseDate.setText(Utility.formatDate(movie.getReleaseDate()));
             detailVotedAverage.setText(String.valueOf(movie.getVoteAverage()));
 
         }

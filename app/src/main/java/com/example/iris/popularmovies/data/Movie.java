@@ -14,8 +14,9 @@ public class Movie implements Parcelable {
     private double voteAverage;
     private ArrayList<String> genre;
 
-    public Movie(int ID, String originalTitle, String releaseDate, String overview, double voteAverage, String posterPath) {
+    public Movie(int ID, String title, String originalTitle, String releaseDate, String overview, double voteAverage, String posterPath) {
         this.ID = ID;
+        this.title = title;
         this.originalTitle = originalTitle;
         this.posterPath = posterPath;
         this.releaseDate = releaseDate;
@@ -25,6 +26,7 @@ public class Movie implements Parcelable {
 
     private Movie(Parcel in) {
         this.ID = in.readInt();
+        this.title = in.readString();
         this.originalTitle = in.readString();
         this.posterPath = in.readString();
         this.releaseDate = in.readString();
@@ -35,6 +37,7 @@ public class Movie implements Parcelable {
     @Override
     public void writeToParcel(Parcel parcel, int i) {
         parcel.writeInt(ID);
+        parcel.writeString(title);
         parcel.writeString(originalTitle);
         parcel.writeString(posterPath);
         parcel.writeString(releaseDate);
