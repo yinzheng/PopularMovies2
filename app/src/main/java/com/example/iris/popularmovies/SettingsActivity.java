@@ -35,6 +35,8 @@ import java.util.List;
  * API Guide</a> for more information on developing a Settings UI.
  */
 public class SettingsActivity extends AppCompatPreferenceActivity {
+
+    public static final String PREF_SORT_ORDER = "sort_order";
     /**
      * A preference value change listener that updates the preference's summary
      * to reflect its new value.
@@ -167,7 +169,7 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
             // to their values. When their values change, their summaries are
             // updated to reflect the new value, per the Android Design
             // guidelines.
-            bindPreferenceSummaryToValue(findPreference("sort_order"));
+            bindPreferenceSummaryToValue(findPreference(PREF_SORT_ORDER));
         }
 
         @Override

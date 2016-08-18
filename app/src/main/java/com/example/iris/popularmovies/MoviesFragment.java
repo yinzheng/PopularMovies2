@@ -2,8 +2,11 @@ package com.example.iris.popularmovies;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.preference.Preference;
+import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.os.Bundle;
@@ -37,6 +40,7 @@ public class MoviesFragment extends Fragment {
     protected MovieAdapter mMovieAdapter;
     private final String MOVIE_LIST = "MOVIES";
     private final String LOG_TAG = MoviesFragment.class.getSimpleName();
+    private SharedPreferences.OnSharedPreferenceChangeListener prefListener;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -48,20 +52,25 @@ public class MoviesFragment extends Fragment {
             mMovieList = savedInstanceState.getParcelableArrayList(MOVIE_LIST);
         }
 
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        prefListener = new SharedPreferences.OnSharedPreferenceChangeListener() {
+            public void onSharedPreferenceChanged(SharedPreferences prefs, String key) {
+
+                if (key.equals(SettingsActivity.PREF_SORT_ORDER)) {
+                    String sortOrder = Utility.getPreferedSortOrder(getContext());
+                    new FetchMovieTask(getContext()).execute(sortOrder);
+                }
+
+            }
+        };
+
+        prefs.registerOnSharedPreferenceChangeListener(prefListener);
     }
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
         outState.putParcelableArrayList(MOVIE_LIST, mMovieList);
         super.onSaveInstanceState(outState);
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-
-        String sortOrder = Utility.getPreferedSortOrder(getContext());
-        new FetchMovieTask(getContext()).execute(sortOrder);
     }
 
     @Override
@@ -84,6 +93,9 @@ public class MoviesFragment extends Fragment {
                 startActivity(detailIntent);
             }
         });
+
+        String sortOrder = Utility.getPreferedSortOrder(getContext());
+        new FetchMovieTask(getContext()).execute(sortOrder);
 
         return rootView;
     }
@@ -235,10 +247,7 @@ public class MoviesFragment extends Fragment {
             if(movies != null) {
                 mMovieList = movies;
                 mMovieAdapter.clear();
-
-                for (Movie movie: movies) {
-                    mMovieAdapter.add(movie);
-                }
+                mMovieAdapter.addAll(movies);
             }
         }
     }
