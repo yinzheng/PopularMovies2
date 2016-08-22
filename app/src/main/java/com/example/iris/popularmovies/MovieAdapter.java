@@ -13,6 +13,9 @@ import com.squareup.picasso.Picasso;
 
 import java.util.List;
 
+import butterknife.BindView;
+import butterknife.ButterKnife;
+
 /**
  * Created by Iris on 12/08/2016.
  */
@@ -51,10 +54,10 @@ public class MovieAdapter extends ArrayAdapter<Movie> {
      * Cache of the children views for a forecast list item.
      */
     public static class ViewHolder {
-        public final ImageView posterView;
+        @BindView(R.id.grid_item_movie_poster) ImageView posterView;
 
         public ViewHolder(View view) {
-            posterView = (ImageView) view.findViewById(R.id.grid_item_movie_poster);
+            ButterKnife.bind(this, view);
         }
     }
 }
