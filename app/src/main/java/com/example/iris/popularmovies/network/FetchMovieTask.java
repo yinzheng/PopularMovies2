@@ -1,10 +1,12 @@
-package com.example.iris.popularmovies;
+package com.example.iris.popularmovies.network;
 
 import android.content.Context;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.util.Log;
 
+import com.example.iris.popularmovies.AsyncTaskCompleteListener;
+import com.example.iris.popularmovies.BuildConfig;
 import com.example.iris.popularmovies.data.Movie;
 
 import org.json.JSONArray;
@@ -169,7 +171,7 @@ public class FetchMovieTask extends AsyncTask<String, Void, ArrayList<Movie>> {
     }
 
     @Override
-    protected void onPostExecute(ArrayList<Movie> movies) {
-        listener.onTaskComplete(movies);
+    protected void onPostExecute(ArrayList<Movie> data) {
+        listener.onTaskComplete(data);
     }
 }

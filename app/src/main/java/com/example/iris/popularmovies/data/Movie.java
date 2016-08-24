@@ -13,8 +13,11 @@ public class Movie implements Parcelable {
     private String posterPath, overview, title, originalTitle, releaseDate;
     private double voteAverage;
     private ArrayList<String> genre;
+    private ArrayList<MovieVideo> videos;
+    private ArrayList<MovieReview> reviews;
 
     public Movie(int ID, String title, String originalTitle, String releaseDate, String overview, double voteAverage, String posterPath) {
+        this();
         this.ID = ID;
         this.title = title;
         this.originalTitle = originalTitle;
@@ -24,7 +27,16 @@ public class Movie implements Parcelable {
         this.voteAverage = voteAverage;
     }
 
+    /**
+     * Initialise the arraylist or may cause crash
+     */
+    private Movie() {
+        this.videos = new ArrayList<>();
+        this.reviews = new ArrayList<>();
+    }
+
     private Movie(Parcel in) {
+        this();
         this.ID = in.readInt();
         this.title = in.readString();
         this.originalTitle = in.readString();
@@ -32,6 +44,8 @@ public class Movie implements Parcelable {
         this.releaseDate = in.readString();
         this.overview = in.readString();
         this.voteAverage = in.readDouble();
+        in.readTypedList(this.videos, MovieVideo.CREATOR);
+        in.readTypedList(this.reviews, MovieReview.CREATOR);
     }
 
     @Override
@@ -43,6 +57,8 @@ public class Movie implements Parcelable {
         parcel.writeString(releaseDate);
         parcel.writeString(overview);
         parcel.writeDouble(voteAverage);
+        parcel.writeTypedList(videos);
+        parcel.writeTypedList(reviews);
     }
 
     @Override
@@ -117,6 +133,18 @@ public class Movie implements Parcelable {
 
     public void setVoteAverage(double voteAverage) {
         this.voteAverage = voteAverage;
+    }
+
+    public ArrayList<MovieVideo> getVideos() { return videos; }
+
+    public void setVideos(ArrayList<MovieVideo> videos) { this.videos = videos; }
+
+    public ArrayList<MovieReview> getReviews() {
+        return reviews;
+    }
+
+    public void setReviews(ArrayList<MovieReview> reviews) {
+        this.reviews = reviews;
     }
 
     public String toString() {

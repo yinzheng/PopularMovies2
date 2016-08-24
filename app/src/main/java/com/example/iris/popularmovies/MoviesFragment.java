@@ -13,6 +13,8 @@ import android.widget.AdapterView;
 import android.widget.GridView;
 
 import com.example.iris.popularmovies.data.Movie;
+import com.example.iris.popularmovies.network.FetchMovieTask;
+
 import java.util.ArrayList;
 
 /**
