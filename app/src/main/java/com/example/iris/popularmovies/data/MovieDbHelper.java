@@ -27,12 +27,13 @@ public class MovieDbHelper extends SQLiteOpenHelper {
                 MovieEntry._ID + " INTEGER PRIMARY KEY," +
 
                 // the ID of the location entry associated with this weather data
+                MovieEntry.COLUMN_MOVIE_ID + " INTEGER UNIQUE NOT NULL," +
                 MovieEntry.COLUMN_TITLE + " TEXT NOT NULL, " +
                 MovieEntry.COLUMN_ORIGINAL_TITLE + " TEXT NOT NULL, " +
                 MovieEntry.COLUMN_OVERVIEW + " TEXT NOT NULL, " +
                 MovieEntry.COLUMN_POSTER_PATH + " TEXT NOT NULL," +
                 MovieEntry.COLUMN_RELEASE_DATE + " TEXT NOT NULL, " +
-                MovieEntry.COLUMN_VOTED_AVERAGE + " REAL NOT NULL ";
+                MovieEntry.COLUMN_VOTED_AVERAGE + " REAL NOT NULL) ";
 
         sqLiteDatabase.execSQL(SQL_CREATE_MOVIE_TABLE);
     }

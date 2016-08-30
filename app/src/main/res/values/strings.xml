@@ -20,4 +20,6 @@
         <item>popular</item>
         <item>top_rated</item>
     </string-array>
+
+    <string name="content_authority">com.example.iris.popularmovies.app</string>
 </resources>

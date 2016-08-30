@@ -1,6 +1,8 @@
 package com.example.iris.popularmovies.network;
 
+import android.content.ContentValues;
 import android.content.Context;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.util.Log;
@@ -8,6 +10,9 @@ import android.util.Log;
 import com.example.iris.popularmovies.AsyncTaskCompleteListener;
 import com.example.iris.popularmovies.BuildConfig;
 import com.example.iris.popularmovies.data.Movie;
+import com.example.iris.popularmovies.data.MovieContract;
+import com.example.iris.popularmovies.data.MovieContract.MovieEntry;
+import com.example.iris.popularmovies.data.MovieDbHelper;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -20,18 +25,18 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Vector;
 
 /**
  * Created by Iris on 22/08/2016.
  */
-public class FetchMovieTask extends AsyncTask<String, Void, ArrayList<Movie>> {
+public class FetchMovieTask extends AsyncTask<String, Void, Void> {
     private final String LOG_TAG = FetchMovieTask.class.getSimpleName();
     private final Context mContext;
     private AsyncTaskCompleteListener<ArrayList<Movie>> listener;
 
-    public FetchMovieTask(Context context, AsyncTaskCompleteListener<ArrayList<Movie>> listener) {
+    public FetchMovieTask(Context context) {
         this.mContext = context;
-        this.listener = listener;
     }
 
     /**
@@ -40,7 +45,7 @@ public class FetchMovieTask extends AsyncTask<String, Void, ArrayList<Movie>> {
      * @return
      * @throws JSONException
      */
-    private ArrayList<Movie> getMovieDataFromJson(String movieJsonStr,
+    private Void getMovieDataFromJson(String movieJsonStr,
                                                   String listType)
             throws JSONException {
 
@@ -63,8 +68,11 @@ public class FetchMovieTask extends AsyncTask<String, Void, ArrayList<Movie>> {
         try {
             JSONObject movieJson = new JSONObject(movieJsonStr);
             JSONArray movieArray = movieJson.getJSONArray(MDB_RESULTS);
+            Uri builtUri = Uri.parse(MDB_POSTER_URL).buildUpon()
+                    .appendPath(MDB_POSTER_FORMAT)
+                    .build();
 
-            ArrayList<Movie> movieList = new ArrayList<>();
+            Vector<ContentValues> cVVector = new Vector<>(movieArray.length());
 
             for(int i = 0; i < movieArray.length(); i++) {
                 // values to be collected
@@ -83,32 +91,42 @@ public class FetchMovieTask extends AsyncTask<String, Void, ArrayList<Movie>> {
                 releaseDate = currentMovie.getString(MDB_RELEASE_DATE);
                 voteAverage = currentMovie.getDouble(MDB_VOTE_AVERAGE);
 
-                Uri builtUri = Uri.parse(MDB_POSTER_URL).buildUpon()
-                        .appendPath(MDB_POSTER_FORMAT)
-                        .build();
 
-                movieList.add(new Movie(
-                        movieId,
-                        title,
-                        originalTitle,
-                        releaseDate,
-                        overview,
-                        voteAverage,
-                        builtUri.toString() + posterPath
-                ));
+                ContentValues movieValues = new ContentValues();
+
+                movieValues.put(MovieEntry.COLUMN_MOVIE_ID, movieId);
+                movieValues.put(MovieEntry.COLUMN_TITLE, title);
+                movieValues.put(MovieEntry.COLUMN_ORIGINAL_TITLE, originalTitle);
+                movieValues.put(MovieEntry.COLUMN_RELEASE_DATE, releaseDate);
+                movieValues.put(MovieEntry.COLUMN_OVERVIEW, overview);
+                movieValues.put(MovieEntry.COLUMN_VOTED_AVERAGE, voteAverage);
+                movieValues.put(MovieEntry.COLUMN_POSTER_PATH, builtUri.toString() + posterPath);
+
+                cVVector.add(movieValues);
             }
 
-            return movieList;
+            int inserted = 0;
+
+            if(cVVector.size() > 0) {
+                ContentValues[] cvArray = new ContentValues[cVVector.size()];
+                cVVector.toArray(cvArray);
+
+                Uri movieListUri = MovieContract.MovieEntry.buildMovieListUri("popular");
+                inserted = mContext.getContentResolver().bulkInsert(movieListUri, cvArray);
+            }
+
+            Log.d(LOG_TAG, "FetchMovieTask Complete. " + inserted + " Inserted.");
 
         } catch (JSONException e) {
             Log.e(LOG_TAG, e.getMessage(), e);
             e.printStackTrace();
         }
+
         return null;
     }
 
     @Override
-    protected ArrayList<Movie> doInBackground(String... params) {
+    protected Void doInBackground(String... params) {
 
         HttpURLConnection urlConnection;
         BufferedReader reader;
@@ -168,10 +186,5 @@ public class FetchMovieTask extends AsyncTask<String, Void, ArrayList<Movie>> {
 
         }
         return null;
-    }
-
-    @Override
-    protected void onPostExecute(ArrayList<Movie> data) {
-        listener.onTaskComplete(data);
     }
 }
