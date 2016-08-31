@@ -111,7 +111,7 @@ public class FetchMovieTask extends AsyncTask<String, Void, Void> {
                 ContentValues[] cvArray = new ContentValues[cVVector.size()];
                 cVVector.toArray(cvArray);
 
-                Uri movieListUri = MovieContract.MovieEntry.buildMovieListUri("popular");
+                Uri movieListUri = MovieContract.MovieListEntry.buildMovieListUri(listType);
                 inserted = mContext.getContentResolver().bulkInsert(movieListUri, cvArray);
             }
 

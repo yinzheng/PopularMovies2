@@ -36,8 +36,30 @@ public class MovieContract {
             return ContentUris.withAppendedId(CONTENT_URI, id);
         }
 
+    }
+
+    public static final class MovieListEntry implements BaseColumns {
+        public static final String TABLE_NAME = "movie_list";
+        public static final String COLUMN_MOVIE_KEY = "movie_id";
+        public static final String COLUMN_LIST_TYPE = "list_type";
+
+        public static final String MOVIE_TYPE_POPULAR = "popular";
+        public static final String MOVIE_TYPE_TOP_RATED = "top_rated";
+        public static final String MOVIE_TYPE_FAVOURITE = "favourite";
+
+        public static final Uri CONTENT_URI =
+                BASE_CONTENT_URI.buildUpon().appendPath(PATH_MOVIE).build();
+
         public static Uri buildMovieListUri(String type) {
-            return CONTENT_URI.buildUpon().appendPath(type).build();
+            switch (type) {
+                case MOVIE_TYPE_POPULAR:
+                case MOVIE_TYPE_TOP_RATED:
+                case MOVIE_TYPE_FAVOURITE:
+                    return CONTENT_URI.buildUpon().appendPath(type).build();
+                default:
+                    return CONTENT_URI;
+            }
         }
+
     }
 }

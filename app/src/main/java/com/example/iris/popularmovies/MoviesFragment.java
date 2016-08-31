@@ -40,7 +40,7 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
 
     private static final String[] MOVIE_COLUMNS = {
             MovieContract.MovieEntry.TABLE_NAME + "." + MovieContract.MovieEntry._ID,
-            MovieContract.MovieEntry.COLUMN_MOVIE_ID,
+            MovieContract.MovieEntry.TABLE_NAME + "." + MovieContract.MovieEntry.COLUMN_MOVIE_ID,
             MovieContract.MovieEntry.COLUMN_TITLE,
             MovieContract.MovieEntry.COLUMN_ORIGINAL_TITLE,
             MovieContract.MovieEntry.COLUMN_OVERVIEW,
@@ -121,7 +121,8 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
 
     @Override
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
-        Uri movieListUri = MovieContract.MovieEntry.buildMovieListUri("popular");
+        String sortOrder = Utility.getPreferedSortOrder(getContext());
+        Uri movieListUri = MovieContract.MovieListEntry.buildMovieListUri(sortOrder);
 
         return new CursorLoader(getActivity(),
                 movieListUri,
