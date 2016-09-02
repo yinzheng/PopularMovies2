@@ -29,7 +29,14 @@ import java.util.ArrayList;
  */
 public class MoviesFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor> {
 
-    private static final int MOVIE_LOADER = 0;
+    private static final int MOVIE_LOADER_POPULAR = 0;
+    private static final int MOVIE_LOADER_TOP_RATED = 1;
+    private static final int MOVIE_LOADER_FAVOURITE = 2;
+
+    private static final String MOVIE_POPULAR = "popular";
+    private static final String MOVIE_TOP_RATED = "top_rated";
+    private static final String MOVIE_FAVOURITE = "favourite";
+
     private final String MOVIE_LIST = "MOVIES";
     private final String LOG_TAG = MoviesFragment.class.getSimpleName();
     private SharedPreferences.OnSharedPreferenceChangeListener prefListener;
@@ -62,7 +69,21 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
 
     @Override
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
-        getLoaderManager().initLoader(MOVIE_LOADER, null, this);
+        String sortOrder = Utility.getPreferedSortOrder(getContext());
+        switch (sortOrder) {
+            case MOVIE_POPULAR:
+                getLoaderManager().initLoader(MOVIE_LOADER_POPULAR, null, this);
+                break;
+            case MOVIE_TOP_RATED:
+                getLoaderManager().initLoader(MOVIE_LOADER_TOP_RATED, null, this);
+                break;
+            case MOVIE_FAVOURITE:
+                getLoaderManager().initLoader(MOVIE_LOADER_FAVOURITE, null, this);
+                break;
+            default:
+                getLoaderManager().initLoader(MOVIE_LOADER_POPULAR, null, this);
+        }
+
         super.onActivityCreated(savedInstanceState);
     }
 
@@ -75,18 +96,31 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
             public void onSharedPreferenceChanged(SharedPreferences prefs, String key) {
 
                 if (key.equals(SettingsActivity.PREF_SORT_ORDER)) {
-                    String sortOrder = Utility.getPreferedSortOrder(getContext());
-                    new FetchMovieTask(getContext()).execute(sortOrder);
+                    onListChanged();
                 }
-
             }
         };
 
         prefs.registerOnSharedPreferenceChangeListener(prefListener);
 
+    }
+
+    private void onListChanged() {
         String sortOrder = Utility.getPreferedSortOrder(getContext());
         new FetchMovieTask(getContext()).execute(sortOrder);
-
+        switch (sortOrder) {
+            case MOVIE_POPULAR:
+                getLoaderManager().restartLoader(MOVIE_LOADER_POPULAR, null, this);
+                break;
+            case MOVIE_TOP_RATED:
+                getLoaderManager().restartLoader(MOVIE_LOADER_TOP_RATED, null, this);
+                break;
+            case MOVIE_FAVOURITE:
+                getLoaderManager().restartLoader(MOVIE_LOADER_FAVOURITE, null, this);
+                break;
+            default:
+                getLoaderManager().restartLoader(MOVIE_LOADER_POPULAR, null, this);
+        }
     }
 
     @Override
@@ -121,8 +155,22 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
 
     @Override
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
-        String sortOrder = Utility.getPreferedSortOrder(getContext());
-        Uri movieListUri = MovieContract.MovieListEntry.buildMovieListUri(sortOrder);
+        Uri movieListUri;
+
+        switch (id) {
+            case MOVIE_LOADER_POPULAR:
+                movieListUri = MovieContract.MovieListEntry.buildMovieListUri(MOVIE_POPULAR);
+                break;
+            case MOVIE_LOADER_TOP_RATED:
+                movieListUri = MovieContract.MovieListEntry.buildMovieListUri(MOVIE_TOP_RATED);
+                break;
+            case MOVIE_LOADER_FAVOURITE:
+                movieListUri = MovieContract.MovieListEntry.buildMovieListUri(MOVIE_FAVOURITE);
+                break;
+            default:
+                movieListUri = MovieContract.MovieListEntry.buildMovieListUri(MOVIE_POPULAR);
+
+        }
 
         return new CursorLoader(getActivity(),
                 movieListUri,

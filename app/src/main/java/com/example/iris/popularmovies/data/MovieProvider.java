@@ -5,6 +5,7 @@ import android.content.ContentValues;
 import android.content.UriMatcher;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
 import android.support.annotation.Nullable;
 import android.util.Log;
@@ -23,19 +24,34 @@ public class MovieProvider extends ContentProvider {
     static final int MOVIE_FAVOURITE = 102;
     static final int MOVIE = 300;
 
+    private static final SQLiteQueryBuilder sMovieListQueryBuilder;
+
+    static {
+        sMovieListQueryBuilder = new SQLiteQueryBuilder();
+
+        sMovieListQueryBuilder.setTables(
+          MovieContract.MovieEntry.TABLE_NAME + " INNER JOIN " +
+                  MovieContract.MovieListEntry.TABLE_NAME +
+                  " ON " + MovieContract.MovieEntry.TABLE_NAME +
+                  "." + MovieContract.MovieEntry.COLUMN_MOVIE_ID +
+                  " = " + MovieContract.MovieListEntry.TABLE_NAME +
+                  "." + MovieContract.MovieListEntry.COLUMN_MOVIE_KEY
+        );
+    }
+
 
     static UriMatcher buildUriMatcher() {
         final UriMatcher matcher = new UriMatcher(UriMatcher.NO_MATCH);
         final String authority = MovieContract.CONTENT_AUTHORITY;
 
-        matcher.addURI(authority, MovieContract.PATH_MOVIE
-                + "/" + MovieContract.MovieListEntry.MOVIE_TYPE_POPULAR, MOVIE_POPULAR);
-        matcher.addURI(authority, MovieContract.PATH_MOVIE
-                + "/" + MovieContract.MovieListEntry.MOVIE_TYPE_TOP_RATED, MOVIE_TOP_RATED);
-        matcher.addURI(authority, MovieContract.PATH_MOVIE
-                + "/" + MovieContract.MovieListEntry.MOVIE_TYPE_FAVOURITE, MOVIE_FAVOURITE);
+        matcher.addURI(authority, MovieContract.PATH_MOVIE +
+                "/" + MovieContract.MovieListEntry.MOVIE_TYPE_POPULAR, MOVIE_POPULAR);
+        matcher.addURI(authority, MovieContract.PATH_MOVIE +
+                "/" + MovieContract.MovieListEntry.MOVIE_TYPE_TOP_RATED, MOVIE_TOP_RATED);
+        matcher.addURI(authority, MovieContract.PATH_MOVIE +
+                "/" + MovieContract.MovieListEntry.MOVIE_TYPE_FAVOURITE, MOVIE_FAVOURITE);
 
-        matcher.addURI(authority, MovieContract.PATH_MOVIE+"/*", MOVIE);
+        matcher.addURI(authority, MovieContract.PATH_MOVIE+"/#", MOVIE);
 
         // 3) Return the new matcher!
         return matcher;
@@ -47,6 +63,18 @@ public class MovieProvider extends ContentProvider {
         return true;
     }
 
+    private Cursor getMovieListByType(Uri uri, String[] projection, String selection,
+                                      String[] selectionArgs, String sortOrder) {
+        return sMovieListQueryBuilder.query(mMovieHelper.getReadableDatabase(),
+                projection,
+                selection,
+                selectionArgs,
+                null,
+                null,
+                sortOrder
+        );
+    }
+
     @Nullable
     @Override
     public Cursor query(Uri uri, String[] projection, String selection,
@@ -55,51 +83,37 @@ public class MovieProvider extends ContentProvider {
 
         switch (sUriMatcher.match(uri)) {
             case MOVIE_POPULAR: {
-                Log.d(LOG_TAG, uri.toString());
-
-                retCursor = mMovieHelper.getReadableDatabase().query(
-                        MovieContract.MovieEntry.TABLE_NAME + ", "
-                                + MovieContract.MovieListEntry.TABLE_NAME,
+                retCursor = getMovieListByType(uri,
                         projection,
-                        MovieContract.MovieEntry.TABLE_NAME
-                                + "." + MovieContract.MovieEntry.COLUMN_MOVIE_ID
-                                + " = " + MovieContract.MovieListEntry.TABLE_NAME
-                                + "." + MovieContract.MovieListEntry.COLUMN_MOVIE_KEY
-                                + " AND " + MovieContract.MovieListEntry.COLUMN_LIST_TYPE
-                                + " = '" + MovieContract.MovieListEntry.MOVIE_TYPE_POPULAR + "'",
-                        null,
-                        null,
-                        null,
-                        sortOrder
-                );
-
+                        MovieContract.MovieListEntry.COLUMN_LIST_TYPE +
+                                " = '" + MovieContract.MovieListEntry.MOVIE_TYPE_POPULAR + "'",
+                        selectionArgs,
+                        sortOrder);
                 break;
             }
             case MOVIE_TOP_RATED: {
-                Log.d(LOG_TAG, uri.toString());
-
-                retCursor = mMovieHelper.getReadableDatabase().query(
-                        MovieContract.MovieEntry.TABLE_NAME + ", "
-                                + MovieContract.MovieListEntry.TABLE_NAME,
+                retCursor = getMovieListByType(uri,
                         projection,
-                        MovieContract.MovieEntry.TABLE_NAME
-                                + "." + MovieContract.MovieEntry.COLUMN_MOVIE_ID
-                                + " = " + MovieContract.MovieListEntry.TABLE_NAME
-                                + "." + MovieContract.MovieListEntry.COLUMN_MOVIE_KEY
-                                + " AND " + MovieContract.MovieListEntry.COLUMN_LIST_TYPE
-                                + " = '" + MovieContract.MovieListEntry.MOVIE_TYPE_TOP_RATED + "'",
-                        null,
-                        null,
-                        null,
-                        sortOrder
-                );
-
+                        MovieContract.MovieListEntry.COLUMN_LIST_TYPE +
+                                " = '" + MovieContract.MovieListEntry.MOVIE_TYPE_TOP_RATED + "'",
+                        selectionArgs,
+                        sortOrder);
+                break;
+            }
+            case MOVIE_FAVOURITE: {
+                retCursor = getMovieListByType(uri,
+                        projection,
+                        MovieContract.MovieListEntry.COLUMN_LIST_TYPE +
+                                " = '" + MovieContract.MovieListEntry.MOVIE_TYPE_FAVOURITE + "'",
+                        selectionArgs,
+                        sortOrder);
                 break;
             }
             default:
                 throw new UnsupportedOperationException("Unknown uri: " + uri);
         }
 
+        retCursor.setNotificationUri(getContext().getContentResolver(), uri);
         return retCursor;
     }
 
@@ -167,21 +181,46 @@ public class MovieProvider extends ContentProvider {
         return 0;
     }
 
+
+
     @Override
     public int update(Uri uri, ContentValues contentValues, String s, String[] strings) {
         return 0;
     }
 
-    @Override
+    private int bulkInsertMovie(ContentValues[] values) {
+        final SQLiteDatabase db = mMovieHelper.getWritableDatabase();
+        db.beginTransaction();
+        int returnCount = 0;
+
+        try {
+            for (ContentValues value: values) {
+                // insert movie detail
+                long _id = db.insert(MovieContract.MovieEntry.TABLE_NAME,
+                        null, value);
+                if ( _id != -1 ) {
+                    returnCount++;
+                }
+            }
+
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+
+        return returnCount;
+    }
+
     public int bulkInsert(Uri uri, ContentValues[] values) {
         final SQLiteDatabase db = mMovieHelper.getWritableDatabase();
         final int match = sUriMatcher.match(uri);
-        int movieCount = 0;
+
         int returnCount = 0;
 
         switch (match) {
             case MOVIE_POPULAR:
-                movieCount = bulkInsertMovie(values);
+                bulkDelete(uri); // delete previous list
+                bulkInsertMovie(values); // save movie information
 
                 db.beginTransaction();
                 try {
@@ -207,10 +246,14 @@ public class MovieProvider extends ContentProvider {
                     db.endTransaction();
                 }
 
-                getContext().getContentResolver().notifyChange(uri, null);
+                if(returnCount != 0) {
+                    getContext().getContentResolver().notifyChange(uri, null);
+                }
+
                 return returnCount;
             case MOVIE_TOP_RATED:
-                movieCount = bulkInsertMovie(values);
+                bulkDelete(uri); // delete previous list
+                bulkInsertMovie(values); // save movie information
 
                 db.beginTransaction();
                 try {
@@ -236,35 +279,37 @@ public class MovieProvider extends ContentProvider {
                     db.endTransaction();
                 }
 
-                getContext().getContentResolver().notifyChange(uri, null);
+                if(returnCount != 0) {
+                    getContext().getContentResolver().notifyChange(uri, null);
+                }
                 return returnCount;
             default:
                 return super.bulkInsert(uri, values);
         }
     }
 
-    public int bulkInsertMovie(ContentValues[] values) {
+    public int bulkDelete(Uri uri) {
         final SQLiteDatabase db = mMovieHelper.getWritableDatabase();
-        db.beginTransaction();
-        int returnCount = 0;
+        final int match = sUriMatcher.match(uri);
 
-        try {
-            for (ContentValues value: values) {
-                // insert movie detail
-                long _id = db.insert(MovieContract.MovieEntry.TABLE_NAME,
-                        null, value);
-                if ( _id != -1 ) {
-                    returnCount++;
-                }
-            }
-
-            db.setTransactionSuccessful();
-        } finally {
-            db.endTransaction();
+        switch (match) {
+            case MOVIE_POPULAR:
+                return db.delete(MovieContract.MovieListEntry.TABLE_NAME,
+                        MovieContract.MovieListEntry.COLUMN_LIST_TYPE +
+                                " = '" + MovieContract.MovieListEntry.MOVIE_TYPE_POPULAR + "'",
+                        null
+                );
+            case MOVIE_TOP_RATED:
+                return db.delete(MovieContract.MovieListEntry.TABLE_NAME,
+                        MovieContract.MovieListEntry.COLUMN_LIST_TYPE +
+                                " = '" + MovieContract.MovieListEntry.MOVIE_TYPE_TOP_RATED + "'",
+                        null
+                );
+            default:
+                return 0;
         }
-
-        return returnCount;
     }
+
 
     @Override
     public void shutdown() {
