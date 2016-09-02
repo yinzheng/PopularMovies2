@@ -81,7 +81,7 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
                 getLoaderManager().initLoader(MOVIE_LOADER_FAVOURITE, null, this);
                 break;
             default:
-                getLoaderManager().initLoader(MOVIE_LOADER_POPULAR, null, this);
+                throw new UnsupportedOperationException("Unknown sort order: " + sortOrder);
         }
 
         super.onActivityCreated(savedInstanceState);
@@ -107,19 +107,20 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
 
     private void onListChanged() {
         String sortOrder = Utility.getPreferedSortOrder(getContext());
-        new FetchMovieTask(getContext()).execute(sortOrder);
         switch (sortOrder) {
             case MOVIE_POPULAR:
+                new FetchMovieTask(getContext()).execute(sortOrder);
                 getLoaderManager().restartLoader(MOVIE_LOADER_POPULAR, null, this);
                 break;
             case MOVIE_TOP_RATED:
+                new FetchMovieTask(getContext()).execute(sortOrder);
                 getLoaderManager().restartLoader(MOVIE_LOADER_TOP_RATED, null, this);
                 break;
             case MOVIE_FAVOURITE:
                 getLoaderManager().restartLoader(MOVIE_LOADER_FAVOURITE, null, this);
                 break;
             default:
-                getLoaderManager().restartLoader(MOVIE_LOADER_POPULAR, null, this);
+                throw new UnsupportedOperationException("Unknown sort order: " + sortOrder);
         }
     }
 
@@ -168,7 +169,7 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
                 movieListUri = MovieContract.MovieListEntry.buildMovieListUri(MOVIE_FAVOURITE);
                 break;
             default:
-                movieListUri = MovieContract.MovieListEntry.buildMovieListUri(MOVIE_POPULAR);
+                throw new UnsupportedOperationException("Unknown loader id: " + id);
 
         }
 
