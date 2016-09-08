@@ -24,4 +24,5 @@
     </string-array>
 
     <string name="content_authority">com.example.iris.popularmovies.app</string>
+    <string name="empty_movie_list">No items found.</string>
 </resources>

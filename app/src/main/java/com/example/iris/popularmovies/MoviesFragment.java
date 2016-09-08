@@ -1,6 +1,5 @@
 package com.example.iris.popularmovies;
 
-import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
@@ -11,23 +10,26 @@ import android.os.Bundle;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
+import android.support.v7.widget.GridLayoutManager;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.helper.ItemTouchHelper;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
-import android.widget.GridView;
+import android.widget.TextView;
 
-import com.example.iris.popularmovies.data.Movie;
 import com.example.iris.popularmovies.data.MovieContract;
 import com.example.iris.popularmovies.network.FetchMovieTask;
 
-import java.util.ArrayList;
+import org.w3c.dom.Text;
 
 /**
  * Movies Fragment that contains a grid view of all movies
  */
-public class MoviesFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor> {
+public class MoviesFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor>,
+        SharedPreferences.OnSharedPreferenceChangeListener {
 
     private static final int MOVIE_LOADER_POPULAR = 0;
     private static final int MOVIE_LOADER_TOP_RATED = 1;
@@ -43,7 +45,9 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
 
     private static final String SELECTED_KEY = "selected_position";
     private MovieAdapter mMovieAdapter;
-    private GridView mMovieGridView;
+    private RecyclerView mMovieGridView;
+    private TextView mMovieEmptyView;
+    private int mPosition = RecyclerView.NO_POSITION;
 
     private static final String[] MOVIE_COLUMNS = {
             MovieContract.MovieEntry.TABLE_NAME + "." + MovieContract.MovieEntry._ID,
@@ -90,22 +94,10 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
-        prefListener = new SharedPreferences.OnSharedPreferenceChangeListener() {
-            public void onSharedPreferenceChanged(SharedPreferences prefs, String key) {
-
-                if (key.equals(SettingsActivity.PREF_SORT_ORDER)) {
-                    onListChanged();
-                }
-            }
-        };
-
-        prefs.registerOnSharedPreferenceChangeListener(prefListener);
-
     }
 
     private void onListChanged() {
+
         String sortOrder = Utility.getPreferedSortOrder(getContext());
         switch (sortOrder) {
             case MOVIE_POPULAR:
@@ -125,6 +117,20 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
     }
 
     @Override
+    public void onResume() {
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        sp.registerOnSharedPreferenceChangeListener(this);
+        super.onResume();
+    }
+
+    @Override
+    public void onPause() {
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        sp.unregisterOnSharedPreferenceChangeListener(this);
+        super.onPause();
+    }
+
+    @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
     }
@@ -133,23 +139,26 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
 
-
-        mMovieAdapter = new MovieAdapter(getActivity(), null, 0);
-
         View rootView = inflater.inflate(R.layout.fragment_movies, container, false);
-        mMovieGridView = (GridView) rootView.findViewById(R.id.grid_movies);
-        mMovieGridView.setAdapter(mMovieAdapter);
 
-//        movieGridView.setOnItemClickListener(new AdapterView.OnItemClickListener(){
-//            @Override
-//            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-//                Intent detailIntent = new Intent(getActivity(), DetailActivity.class);
-//                Bundle bundle = new Bundle();
-//                bundle.putParcelable("MOVIE", mMovieAdapter.getItem(i));
-//                detailIntent.putExtra("DATA", bundle);
-//                startActivity(detailIntent);
-//            }
-//        });
+        // empty view
+        mMovieEmptyView = (TextView) rootView.findViewById(R.id.recyclerview_movies_empty);
+
+
+
+        mMovieGridView = (RecyclerView) rootView.findViewById(R.id.recyclerview_movies);
+        mMovieGridView.setLayoutManager(new GridLayoutManager(getActivity(), 2));
+        mMovieGridView.setHasFixedSize(true);
+
+        mMovieAdapter = new MovieAdapter(getActivity(), new MovieAdapter.MovieAdapterOnClickHandler() {
+            @Override
+            public void onClick(int id, MovieAdapter.ViewHolder vh) {
+                ((Callback) getActivity()).onItemSelected(MovieContract.MovieEntry.buildMovieUri(id));
+                mPosition = vh.getAdapterPosition();
+            }
+        }, mMovieEmptyView);
+
+        mMovieGridView.setAdapter(mMovieAdapter);
 
         return rootView;
     }
@@ -183,11 +192,29 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
 
     @Override
     public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
+        if (data.getCount() == 0) {
+            mMovieEmptyView.setVisibility(View.VISIBLE);
+        } else {
+            mMovieEmptyView.setVisibility(View.GONE);
+        }
+
         mMovieAdapter.swapCursor(data);
     }
 
     @Override
     public void onLoaderReset(Loader<Cursor> loader) {
         mMovieAdapter.swapCursor(null);
+    }
+
+
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        if (key.equals(SettingsActivity.PREF_SORT_ORDER)) {
+            onListChanged();
+        }
+    }
+
+    public interface Callback {
+        public void onItemSelected(Uri uri);
     }
 }
