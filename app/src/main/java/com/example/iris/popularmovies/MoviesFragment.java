@@ -1,5 +1,6 @@
 package com.example.iris.popularmovies;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
@@ -153,7 +154,11 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
         mMovieAdapter = new MovieAdapter(getActivity(), new MovieAdapter.MovieAdapterOnClickHandler() {
             @Override
             public void onClick(int id, MovieAdapter.ViewHolder vh) {
-                ((Callback) getActivity()).onItemSelected(MovieContract.MovieEntry.buildMovieUri(id));
+//                ((Callback) getActivity()).onItemSelected(MovieContract.MovieEntry.buildMovieUri(id));
+                Intent intent = new Intent(getActivity(), DetailActivity.class)
+                        .setData(MovieContract.MovieEntry.buildMovieUri(id));
+                startActivity(intent);
+
                 mPosition = vh.getAdapterPosition();
             }
         }, mMovieEmptyView);
@@ -192,12 +197,6 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
 
     @Override
     public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
-        if (data.getCount() == 0) {
-            mMovieEmptyView.setVisibility(View.VISIBLE);
-        } else {
-            mMovieEmptyView.setVisibility(View.GONE);
-        }
-
         mMovieAdapter.swapCursor(data);
     }
 

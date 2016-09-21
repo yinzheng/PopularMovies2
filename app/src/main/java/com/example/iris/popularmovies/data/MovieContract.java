@@ -40,6 +40,7 @@ public class MovieContract {
 
     public static final class MovieListEntry implements BaseColumns {
         public static final String TABLE_NAME = "movie_list";
+        public static final String SUBTABLE_NAME = "L";
         public static final String COLUMN_MOVIE_KEY = "movie_id";
         public static final String COLUMN_LIST_TYPE = "list_type";
 

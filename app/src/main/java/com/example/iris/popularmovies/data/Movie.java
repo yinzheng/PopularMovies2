@@ -9,14 +9,15 @@ import java.util.ArrayList;
  * Created by Iris on 10/08/2016.
  */
 public class Movie implements Parcelable {
-    private int ID;
+    private int ID, favourite;
     private String posterPath, overview, title, originalTitle, releaseDate;
     private double voteAverage;
     private ArrayList<String> genre;
     private ArrayList<MovieVideo> videos;
     private ArrayList<MovieReview> reviews;
 
-    public Movie(int ID, String title, String originalTitle, String releaseDate, String overview, double voteAverage, String posterPath) {
+    public Movie(int ID, String title, String originalTitle, String releaseDate,
+                 String overview, double voteAverage, String posterPath, int favourite) {
         this();
         this.ID = ID;
         this.title = title;
@@ -25,6 +26,7 @@ public class Movie implements Parcelable {
         this.releaseDate = releaseDate;
         this.overview = overview;
         this.voteAverage = voteAverage;
+        this.favourite = favourite;
     }
 
     /**
@@ -46,6 +48,7 @@ public class Movie implements Parcelable {
         this.voteAverage = in.readDouble();
         in.readTypedList(this.videos, MovieVideo.CREATOR);
         in.readTypedList(this.reviews, MovieReview.CREATOR);
+        this.favourite = in.readInt();
     }
 
     @Override
@@ -59,6 +62,7 @@ public class Movie implements Parcelable {
         parcel.writeDouble(voteAverage);
         parcel.writeTypedList(videos);
         parcel.writeTypedList(reviews);
+        parcel.writeInt(favourite);
     }
 
     @Override
@@ -147,9 +151,12 @@ public class Movie implements Parcelable {
         this.reviews = reviews;
     }
 
+    public int getFavourite() { return favourite; }
+
+    public void setFavourite(int favourite) { this.favourite = favourite; }
+
     public String toString() {
         return "MOVIE: " + originalTitle;
     }
-
 
 }
