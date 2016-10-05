@@ -1,5 +1,6 @@
 package com.example.iris.popularmovies;
 
+import android.content.ContentUris;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
@@ -9,6 +10,8 @@ import android.os.Bundle;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -48,6 +51,9 @@ public class DetailActivityFragment extends Fragment implements LoaderManager.Lo
     private boolean mVideoLoaded = false;
     private boolean mReviewLoaded = false;
 
+    private DetailAdapter mDetailAdapter;
+    private RecyclerView mMovieDetailView;
+
     private static final String[] MOVIE_COLUMNS = {
             MovieContract.MovieEntry.TABLE_NAME + "." + MovieContract.MovieEntry._ID,
             MovieContract.MovieEntry.TABLE_NAME + "." + MovieContract.MovieEntry.COLUMN_MOVIE_ID,
@@ -74,13 +80,6 @@ public class DetailActivityFragment extends Fragment implements LoaderManager.Lo
     static final int COL_MOVIE_RELEASE_DATE = 6;
     static final int COL_MOVIE_VOTED_AVERAGE = 7;
     static final int COL_MOVIE_FAVOURITE = 8;
-
-    @BindView(R.id.detail_movie_poster) ImageView detailPoster;
-    @BindView(R.id.detail_movie_title) TextView detailTitle;
-    @BindView(R.id.detail_movie_overview) TextView detailOverview;
-    @BindView(R.id.detail_movie_release_date) TextView detailReleaseDate;
-    @BindView(R.id.detail_movie_voted_average) TextView detailVotedAverage;
-    @BindView(R.id.detail_movie_favourite) Button detailFavourite;
 
     public DetailActivityFragment() {
     }
@@ -133,17 +132,23 @@ public class DetailActivityFragment extends Fragment implements LoaderManager.Lo
                              Bundle savedInstanceState) {
 
         View rootView = inflater.inflate(R.layout.fragment_detail, container, false);
-        ButterKnife.bind(this, rootView);
 
-//        if(!mVideoLoaded) {
-//            new FetchMovieVideoTask(getContext(), new FetchVideosTaskCompleteListener())
-//                    .execute(String.valueOf(mMovie.getID()));
-//        }
-//
-//        if(!mReviewLoaded) {
-//            new FetchMovieReviewTask(getContext(), new FetchReviewsTaskCompleteListener())
-//                    .execute(String.valueOf(mMovie.getID()));
-//        }
+        mMovieDetailView = (RecyclerView) rootView.findViewById(R.id.recyclerview_detail);
+        mMovieDetailView.setLayoutManager(new LinearLayoutManager(getActivity()));
+
+        mDetailAdapter = new DetailAdapter(getContext());
+
+        mMovieDetailView.setAdapter(mDetailAdapter);
+
+        if(!mVideoLoaded) {
+            new FetchMovieVideoTask(getContext(), new FetchVideosTaskCompleteListener())
+                    .execute(String.valueOf(ContentUris.parseId(mMovieUri)));
+        }
+
+        if(!mReviewLoaded) {
+            new FetchMovieReviewTask(getContext(), new FetchReviewsTaskCompleteListener())
+                    .execute(String.valueOf(ContentUris.parseId(mMovieUri)));
+        }
 
         return rootView;
     }
@@ -169,28 +174,26 @@ public class DetailActivityFragment extends Fragment implements LoaderManager.Lo
     @Override
     public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
 
-        if(data != null && data.moveToFirst()) {
-            int movieId = data.getInt(COL_MOVIE_ID);
-            String movieOriginalTitle = data.getString(COL_MOVIE_ORIGINAL_TITLE);
-            String movieTitle = data.getString(COL_MOVIE_TITLE);
-            String moviePosterPath = data.getString(COL_MOVIE_POSTER_PATH);
-            String movieReleaseDate = data.getString(COL_MOVIE_RELEASE_DATE);
-            String movieOverview = data.getString(COL_MOVIE_OVERVIEW);
-            double movieVotedAverage = data.getDouble(COL_MOVIE_VOTED_AVERAGE);
-            int movieFavourite = data.getInt(COL_MOVIE_FAVOURITE);
-            
-            mMovie = new Movie(movieId, movieTitle, movieOriginalTitle, movieReleaseDate,
-                    movieOverview, movieVotedAverage, moviePosterPath, movieFavourite);
+        switch(loader.getId()) {
+            case MOVIE_LOADER_ITEM:
+                if(data != null && data.moveToFirst()) {
+                    int movieId = data.getInt(COL_MOVIE_ID);
+                    String movieOriginalTitle = data.getString(COL_MOVIE_ORIGINAL_TITLE);
+                    String movieTitle = data.getString(COL_MOVIE_TITLE);
+                    String moviePosterPath = data.getString(COL_MOVIE_POSTER_PATH);
+                    String movieReleaseDate = data.getString(COL_MOVIE_RELEASE_DATE);
+                    String movieOverview = data.getString(COL_MOVIE_OVERVIEW);
+                    double movieVotedAverage = data.getDouble(COL_MOVIE_VOTED_AVERAGE);
+                    int movieFavourite = data.getInt(COL_MOVIE_FAVOURITE);
 
-            getActivity().setTitle(mMovie.getTitle()); // set title for the detail view
+                    mMovie = new Movie(movieId, movieTitle, movieOriginalTitle, movieReleaseDate,
+                            movieOverview, movieVotedAverage, moviePosterPath, movieFavourite);
 
-            Picasso.with(getContext()).load(mMovie.getPosterPath()).into(detailPoster);
-            detailTitle.setText(mMovie.getOriginalTitle());
-            detailOverview.setText(mMovie.getOverview());
-            detailReleaseDate.setText(Utility.formatDate(mMovie.getReleaseDate()));
-            detailVotedAverage.setText(String.valueOf(mMovie.getVoteAverage()));
-            detailFavourite.setText(String.valueOf(mMovie.getFavourite()));
+                    getActivity().setTitle(mMovie.getTitle()); // set title for the detail view
 
+                    mDetailAdapter.add(mMovie);
+                }
+                break;
         }
 
     }
@@ -207,9 +210,10 @@ public class DetailActivityFragment extends Fragment implements LoaderManager.Lo
         @Override
         public void onTaskComplete(ArrayList<MovieVideo> data)
         {
+            Log.v(LOG_TAG, data.toString());
             if(data != null) {
                 mVideoLoaded = true;
-                mMovie.setVideos(data);
+//                mMovie.setVideos(data);
             }
         }
     }
@@ -221,9 +225,10 @@ public class DetailActivityFragment extends Fragment implements LoaderManager.Lo
         @Override
         public void onTaskComplete(ArrayList<MovieReview> data)
         {
+            Log.v(LOG_TAG, data.toString());
             if(data != null) {
                 mReviewLoaded = true;
-                mMovie.setReviews(data);
+//                mMovie.setReviews(data);
             }
         }
     }
