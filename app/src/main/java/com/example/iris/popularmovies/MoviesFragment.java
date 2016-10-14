@@ -12,9 +12,7 @@ import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
 import android.support.v7.widget.GridLayoutManager;
-import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.helper.ItemTouchHelper;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -23,8 +21,6 @@ import android.widget.TextView;
 
 import com.example.iris.popularmovies.data.MovieContract;
 import com.example.iris.popularmovies.network.FetchMovieTask;
-
-import org.w3c.dom.Text;
 
 /**
  * Movies Fragment that contains a grid view of all movies
@@ -40,15 +36,15 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
     private static final String MOVIE_TOP_RATED = "top_rated";
     private static final String MOVIE_FAVOURITE = "favourite";
 
-    private final String MOVIE_LIST = "MOVIES";
     private final String LOG_TAG = MoviesFragment.class.getSimpleName();
-    private SharedPreferences.OnSharedPreferenceChangeListener prefListener;
 
     private static final String SELECTED_KEY = "selected_position";
     private MovieAdapter mMovieAdapter;
     private RecyclerView mMovieGridView;
     private TextView mMovieEmptyView;
     private int mPosition = RecyclerView.NO_POSITION;
+    private String LIST_LOADED = "LIST_LOADED";
+    private boolean mListLoaded = false;
 
     private static final String[] MOVIE_COLUMNS = {
             MovieContract.MovieEntry.TABLE_NAME + "." + MovieContract.MovieEntry._ID,
@@ -74,12 +70,27 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
 
     @Override
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
+
+        if(savedInstanceState == null || !savedInstanceState.containsKey(LIST_LOADED)) {
+            mListLoaded = false;
+        } else {
+            mListLoaded = savedInstanceState.getBoolean(LIST_LOADED);
+        }
+
         String sortOrder = Utility.getPreferedSortOrder(getContext());
         switch (sortOrder) {
             case MOVIE_POPULAR:
+                if(!mListLoaded) {
+                    new FetchMovieTask(getContext()).execute(sortOrder);
+                    mListLoaded = true;
+                }
                 getLoaderManager().initLoader(MOVIE_LOADER_POPULAR, null, this);
                 break;
             case MOVIE_TOP_RATED:
+                if(!mListLoaded) {
+                    new FetchMovieTask(getContext()).execute(sortOrder);
+                    mListLoaded = true;
+                }
                 getLoaderManager().initLoader(MOVIE_LOADER_TOP_RATED, null, this);
                 break;
             case MOVIE_FAVOURITE:
@@ -93,12 +104,13 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
     }
 
     @Override
-    public void onCreate(@Nullable Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+    public void onSaveInstanceState(Bundle outState) {
+        outState.putBoolean(LIST_LOADED, mListLoaded);
+        super.onSaveInstanceState(outState);
     }
 
     private void onListChanged() {
-
+        Log.v(LOG_TAG, "change called");
         String sortOrder = Utility.getPreferedSortOrder(getContext());
         switch (sortOrder) {
             case MOVIE_POPULAR:
@@ -132,11 +144,6 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
     }
 
     @Override
-    public void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-    }
-
-    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
 
@@ -144,8 +151,6 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
 
         // empty view
         mMovieEmptyView = (TextView) rootView.findViewById(R.id.recyclerview_movies_empty);
-
-
 
         mMovieGridView = (RecyclerView) rootView.findViewById(R.id.recyclerview_movies);
         mMovieGridView.setLayoutManager(new GridLayoutManager(getActivity(), 2));
@@ -171,27 +176,32 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
     @Override
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
         Uri movieListUri;
+        String type;
 
         switch (id) {
             case MOVIE_LOADER_POPULAR:
-                movieListUri = MovieContract.MovieListEntry.buildMovieListUri(MOVIE_POPULAR);
+                type = MOVIE_POPULAR;
                 break;
             case MOVIE_LOADER_TOP_RATED:
-                movieListUri = MovieContract.MovieListEntry.buildMovieListUri(MOVIE_TOP_RATED);
+                type = MOVIE_TOP_RATED;
                 break;
             case MOVIE_LOADER_FAVOURITE:
-                movieListUri = MovieContract.MovieListEntry.buildMovieListUri(MOVIE_FAVOURITE);
+                type = MOVIE_FAVOURITE;
                 break;
             default:
                 throw new UnsupportedOperationException("Unknown loader id: " + id);
 
         }
 
+        movieListUri = MovieContract.MovieListEntry.buildMovieListUri(type);
+
+        String[] selectArgs = {type};
+
         return new CursorLoader(getActivity(),
                 movieListUri,
                 MOVIE_COLUMNS,
                 null,
-                null,
+                selectArgs,
                 null);
     }
 
@@ -208,6 +218,7 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
 
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        Log.v(LOG_TAG, key + " change called");
         if (key.equals(SettingsActivity.PREF_SORT_ORDER)) {
             onListChanged();
         }

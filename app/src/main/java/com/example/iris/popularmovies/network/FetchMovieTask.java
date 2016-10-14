@@ -73,6 +73,8 @@ public class FetchMovieTask extends AsyncTask<String, Void, Void> {
                     .build();
 
             Vector<ContentValues> cVVector = new Vector<>(movieArray.length());
+            Vector<ContentValues> listVector = new Vector<>(movieArray.length());
+
 
             for(int i = 0; i < movieArray.length(); i++) {
                 // values to be collected
@@ -103,7 +105,14 @@ public class FetchMovieTask extends AsyncTask<String, Void, Void> {
                 movieValues.put(MovieEntry.COLUMN_POSTER_PATH, builtUri.toString() + posterPath);
 
                 cVVector.add(movieValues);
+
+                ContentValues listValues = new ContentValues();
+                listValues.put(MovieContract.MovieListEntry.COLUMN_MOVIE_KEY, movieId);
+                listValues.put(MovieContract.MovieListEntry.COLUMN_LIST_TYPE,
+                        listType);
+                listVector.add(listValues);
             }
+
 
             int inserted = 0;
 
@@ -111,8 +120,22 @@ public class FetchMovieTask extends AsyncTask<String, Void, Void> {
                 ContentValues[] cvArray = new ContentValues[cVVector.size()];
                 cVVector.toArray(cvArray);
 
-                Uri movieListUri = MovieContract.MovieListEntry.buildMovieListUri(listType);
+                Uri movieListUri = MovieContract.MovieListEntry.buildMovieListUri("");
                 inserted = mContext.getContentResolver().bulkInsert(movieListUri, cvArray);
+            }
+
+            if(listVector.size() > 0) {
+                ContentValues[] listArray = new ContentValues[listVector.size()];
+                listVector.toArray(listArray);
+
+                Uri movieListUri = MovieContract.MovieListEntry.buildMovieListUri(listType);
+
+                String[] whereArgs = {listType};
+                mContext.getContentResolver().delete(movieListUri,
+                        MovieContract.MovieListEntry.COLUMN_LIST_TYPE + " =?",
+                        whereArgs); // delete previous list
+
+                inserted = mContext.getContentResolver().bulkInsert(movieListUri, listArray);
             }
 
             Log.d(LOG_TAG, "FetchMovieTask Complete. " + inserted + " Inserted.");

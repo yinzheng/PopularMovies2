@@ -20,7 +20,7 @@ public class MovieProvider extends ContentProvider {
     private static final UriMatcher sUriMatcher = buildUriMatcher();
     private MovieDbHelper mMovieHelper;
 
-    static final int MOVIE_LIST = 100;
+    static final int MOVIE_LIST_ALL = 100;
     static final int MOVIE_LIST_POPULAR = 101;
     static final int MOVIE_LIST_TOP_RATED = 102;
     static final int MOVIE_LIST_FAVOURITE = 103;
@@ -66,7 +66,7 @@ public class MovieProvider extends ContentProvider {
         final UriMatcher matcher = new UriMatcher(UriMatcher.NO_MATCH);
         final String authority = MovieContract.CONTENT_AUTHORITY;
 
-        matcher.addURI(authority, MovieContract.PATH_MOVIE, MOVIE_LIST);
+        matcher.addURI(authority, MovieContract.PATH_MOVIE, MOVIE_LIST_ALL);
         matcher.addURI(authority, MovieContract.PATH_MOVIE +
                 "/" + MovieContract.MovieListEntry.MOVIE_TYPE_POPULAR, MOVIE_LIST_POPULAR);
         matcher.addURI(authority, MovieContract.PATH_MOVIE +
@@ -119,7 +119,6 @@ public class MovieProvider extends ContentProvider {
     public Cursor query(Uri uri, String[] projection, String selection,
                         String[] selectionArgs, String sortOrder) {
         Cursor retCursor;
-
         switch (sUriMatcher.match(uri)) {
             case MOVIE: {
                 long id = ContentUris.parseId(uri);
@@ -133,29 +132,12 @@ public class MovieProvider extends ContentProvider {
                 );
                 break;
             }
-            case MOVIE_LIST_POPULAR: {
-                retCursor = getMovieListByType(
-                        projection,
-                        MovieContract.MovieListEntry.COLUMN_LIST_TYPE +
-                                " = '" + MovieContract.MovieListEntry.MOVIE_TYPE_POPULAR + "'",
-                        selectionArgs,
-                        sortOrder);
-                break;
-            }
-            case MOVIE_LIST_TOP_RATED: {
-                retCursor = getMovieListByType(
-                        projection,
-                        MovieContract.MovieListEntry.COLUMN_LIST_TYPE +
-                                " = '" + MovieContract.MovieListEntry.MOVIE_TYPE_TOP_RATED + "'",
-                        selectionArgs,
-                        sortOrder);
-                break;
-            }
+            case MOVIE_LIST_POPULAR:
+            case MOVIE_LIST_TOP_RATED:
             case MOVIE_LIST_FAVOURITE: {
                 retCursor = getMovieListByType(
                         projection,
-                        MovieContract.MovieListEntry.COLUMN_LIST_TYPE +
-                                " = '" + MovieContract.MovieListEntry.MOVIE_TYPE_FAVOURITE + "'",
+                        MovieContract.MovieListEntry.COLUMN_LIST_TYPE + " =? ",
                         selectionArgs,
                         sortOrder);
                 break;
@@ -230,6 +212,16 @@ public class MovieProvider extends ContentProvider {
         Uri returnUri = uri;
 
         switch (match) {
+            case MOVIE_LIST_ALL: {
+                long _id = db.insert(MovieContract.MovieEntry.TABLE_NAME,
+                        null, contentValues);
+                if ( _id > 0)
+                    returnUri = MovieContract.MovieEntry.buildMovieUri(_id);
+                else
+                    throw new android.database.SQLException("Failed to insert row into " + uri);
+
+                break;
+            }
             case MOVIE_VIDEOS: {
                 int movieId = contentValues.getAsInteger(MovieContract.VideoEntry.COLUMN_MOVIE_KEY);
                 long _id = db.insert(MovieContract.VideoEntry.TABLE_NAME,
@@ -281,23 +273,17 @@ public class MovieProvider extends ContentProvider {
 
         switch (match) {
             case MOVIE_LIST_POPULAR:
-                return db.delete(MovieContract.MovieListEntry.TABLE_NAME,
-                        MovieContract.MovieListEntry.COLUMN_LIST_TYPE +
-                                " = '" + MovieContract.MovieListEntry.MOVIE_TYPE_POPULAR + "'",
-                        null
-                );
             case MOVIE_LIST_TOP_RATED:
                 return db.delete(MovieContract.MovieListEntry.TABLE_NAME,
-                        MovieContract.MovieListEntry.COLUMN_LIST_TYPE +
-                                " = '" + MovieContract.MovieListEntry.MOVIE_TYPE_TOP_RATED + "'",
-                        null
+                        where,
+                        whereArgs
                 );
             case MOVIE_FAVOURITE: {
                 return db.delete(MovieContract.MovieListEntry.TABLE_NAME, where, whereArgs);
-
             }
+            default:
+                throw new UnsupportedOperationException("Unknown uri: " + uri);
         }
-        return 0;
     }
 
 
@@ -307,29 +293,6 @@ public class MovieProvider extends ContentProvider {
         return 0;
     }
 
-    private int bulkInsertMovie(ContentValues[] values) {
-        final SQLiteDatabase db = mMovieHelper.getWritableDatabase();
-        db.beginTransaction();
-        int returnCount = 0;
-
-        try {
-            for (ContentValues value: values) {
-                // insert movie detail
-                long _id = db.insert(MovieContract.MovieEntry.TABLE_NAME,
-                        null, value);
-                if ( _id != -1 ) {
-                    returnCount++;
-                }
-            }
-
-            db.setTransactionSuccessful();
-        } finally {
-            db.endTransaction();
-        }
-
-        return returnCount;
-    }
-
     public int bulkInsert(Uri uri, ContentValues[] values) {
         final SQLiteDatabase db = mMovieHelper.getWritableDatabase();
         final int match = sUriMatcher.match(uri);
@@ -337,127 +300,81 @@ public class MovieProvider extends ContentProvider {
         int returnCount = 0;
 
         switch (match) {
+            case MOVIE_LIST_ALL:
+                db.beginTransaction();
+                try {
+                    for (ContentValues value: values) {
+                        // insert movie detail
+                        long _id = db.insert(MovieContract.MovieEntry.TABLE_NAME,
+                                null, value);
+                        if ( _id != -1 ) {
+                            returnCount++;
+                        }
+                    }
+                    db.setTransactionSuccessful();
+                } finally {
+                    db.endTransaction();
+                }
+                break;
+
             case MOVIE_LIST_POPULAR:
-                String[] whereArgs = {MovieContract.MovieListEntry.MOVIE_TYPE_POPULAR};
-                delete(uri, MovieContract.MovieListEntry.COLUMN_LIST_TYPE + " =?"
-                        , whereArgs); // delete previous list
-
-                bulkInsertMovie(values); // save movie information
-
-                db.beginTransaction();
-                try {
-
-                    for (ContentValues value: values) {
-
-                        ContentValues movieValues = new ContentValues();
-                        int movieId = value.getAsInteger(MovieContract.MovieEntry.COLUMN_MOVIE_ID);
-                        movieValues.put(MovieContract.MovieListEntry.COLUMN_MOVIE_KEY, movieId);
-                        movieValues.put(MovieContract.MovieListEntry.COLUMN_LIST_TYPE,
-                                MovieContract.MovieListEntry.MOVIE_TYPE_POPULAR);
-
-                        long _id = db.insert(MovieContract.MovieListEntry.TABLE_NAME,
-                                null, movieValues);
-                        if ( _id != -1 ) {
-                            returnCount++;
-                        }
-                    }
-
-                    db.setTransactionSuccessful();
-
-                } finally {
-                    db.endTransaction();
-                }
-
-                if(returnCount != 0) {
-                    getContext().getContentResolver().notifyChange(uri, null);
-                }
-
-                return returnCount;
             case MOVIE_LIST_TOP_RATED:
-
-                String[] topRatedArgs = {MovieContract.MovieListEntry.MOVIE_TYPE_TOP_RATED};
-                delete(uri, MovieContract.MovieListEntry.COLUMN_LIST_TYPE + " =?"
-                        , topRatedArgs); // delete previous list
-
-                bulkInsertMovie(values); // save movie information
-
                 db.beginTransaction();
                 try {
-
                     for (ContentValues value: values) {
-
-                        ContentValues movieValues = new ContentValues();
-                        int movieId = value.getAsInteger(MovieContract.MovieEntry.COLUMN_MOVIE_ID);
-                        movieValues.put(MovieContract.MovieListEntry.COLUMN_MOVIE_KEY, movieId);
-                        movieValues.put(MovieContract.MovieListEntry.COLUMN_LIST_TYPE,
-                                MovieContract.MovieListEntry.MOVIE_TYPE_TOP_RATED);
-
                         long _id = db.insert(MovieContract.MovieListEntry.TABLE_NAME,
-                                null, movieValues);
+                                null, value);
                         if ( _id != -1 ) {
                             returnCount++;
                         }
                     }
-
                     db.setTransactionSuccessful();
-
                 } finally {
                     db.endTransaction();
                 }
+                break;
 
-                if(returnCount != 0) {
-                    getContext().getContentResolver().notifyChange(uri, null);
-                }
-                return returnCount;
             case MOVIE_VIDEOS:
                 db.beginTransaction();
                 try {
-
                     for (ContentValues value: values) {
-
                         long _id = db.insert(MovieContract.VideoEntry.TABLE_NAME,
                                 null, value);
                         if ( _id != -1 ) {
                             returnCount++;
                         }
                     }
-
                     db.setTransactionSuccessful();
-
                 } finally {
                     db.endTransaction();
                 }
+                break;
 
-                if(returnCount != 0) {
-                    getContext().getContentResolver().notifyChange(uri, null);
-                }
-                return returnCount;
             case MOVIE_REVIEWS:
                 db.beginTransaction();
                 try {
-
                     for (ContentValues value: values) {
-
                         long _id = db.insert(MovieContract.ReviewEntry.TABLE_NAME,
                                 null, value);
                         if ( _id != -1 ) {
                             returnCount++;
                         }
                     }
-
                     db.setTransactionSuccessful();
-
                 } finally {
                     db.endTransaction();
                 }
+                break;
 
-                if(returnCount != 0) {
-                    getContext().getContentResolver().notifyChange(uri, null);
-                }
-                return returnCount;
             default:
                 return super.bulkInsert(uri, values);
         }
+
+        if(returnCount != 0) {
+            getContext().getContentResolver().notifyChange(uri, null);
+        }
+
+        return returnCount;
     }
 
     @Override
