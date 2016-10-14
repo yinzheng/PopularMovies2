@@ -1,5 +1,6 @@
 package com.example.iris.popularmovies.network;
 
+import android.content.ContentValues;
 import android.content.Context;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -7,6 +8,7 @@ import android.util.Log;
 
 import com.example.iris.popularmovies.AsyncTaskCompleteListener;
 import com.example.iris.popularmovies.BuildConfig;
+import com.example.iris.popularmovies.data.MovieContract;
 import com.example.iris.popularmovies.data.MovieReview;
 
 import org.json.JSONArray;
@@ -20,6 +22,7 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Vector;
 
 /**
  * Created by Iris on 24/08/2016.
@@ -28,6 +31,7 @@ public class FetchMovieReviewTask extends AsyncTask<String, Void, ArrayList<Movi
     private final String LOG_TAG = FetchMovieTask.class.getSimpleName();
     private final Context mContext;
     private AsyncTaskCompleteListener<ArrayList<MovieReview>> listener;
+    private String movieId;
 
     public FetchMovieReviewTask(Context context, AsyncTaskCompleteListener<ArrayList<MovieReview>> listener) {
         this.mContext = context;
@@ -53,7 +57,7 @@ public class FetchMovieReviewTask extends AsyncTask<String, Void, ArrayList<Movi
             JSONObject reviewJson = new JSONObject(reviewJsonStr);
             JSONArray reviewArray = reviewJson.getJSONArray(MDB_RESULTS);
 
-            ArrayList<MovieReview> reviewList = new ArrayList<>();
+            Vector<ContentValues> cVVector = new Vector<>(reviewArray.length());
 
             for(int i = 0; i < reviewArray.length(); i++) {
                 // values to be collected
@@ -67,15 +71,29 @@ public class FetchMovieReviewTask extends AsyncTask<String, Void, ArrayList<Movi
                 content = currentMovie.getString(MDB_CONTENT);
                 url = currentMovie.getString(MDB_URL);
 
-                reviewList.add(new MovieReview(
-                        reviewId,
-                        author,
-                        content,
-                        url
-                ));
+                ContentValues reviewValues = new ContentValues();
+                reviewValues.put(MovieContract.ReviewEntry.COLUMN_MOVIE_KEY, movieId);
+                reviewValues.put(MovieContract.ReviewEntry.COLUMN_REVIEW_ID, reviewId);
+                reviewValues.put(MovieContract.ReviewEntry.COLUMN_AUTHOR, author);
+                reviewValues.put(MovieContract.ReviewEntry.COLUMN_CONTENT, content);
+                reviewValues.put(MovieContract.ReviewEntry.COLUMN_URL, url);
+
+                cVVector.add(reviewValues);
             }
 
-            return reviewList;
+            int inserted = 0;
+
+            if(cVVector.size() > 0) {
+                ContentValues[] cvArray = new ContentValues[cVVector.size()];
+                cVVector.toArray(cvArray);
+
+                Uri reviewUri = MovieContract.ReviewEntry.buildMovieReviewListUri(movieId);
+                inserted = mContext.getContentResolver().bulkInsert(reviewUri, cvArray);
+            }
+
+            Log.d(LOG_TAG, "FetchMovieReviewTask Complete. " + inserted + " Inserted.");
+
+            return null;
 
         } catch (JSONException e) {
             Log.e(LOG_TAG, e.getMessage(), e);
@@ -91,7 +109,7 @@ public class FetchMovieReviewTask extends AsyncTask<String, Void, ArrayList<Movi
         BufferedReader reader;
 
         String reviewJsonStr;
-        String movieId = params[0];
+        movieId = params[0];
 
         try {
             final String MOVIES_BASE_URL = "https://api.themoviedb.org/3";

@@ -1,12 +1,16 @@
 package com.example.iris.popularmovies.network;
 
+import android.content.ContentValues;
 import android.content.Context;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.provider.MediaStore;
 import android.util.Log;
 
 import com.example.iris.popularmovies.AsyncTaskCompleteListener;
 import com.example.iris.popularmovies.BuildConfig;
+import com.example.iris.popularmovies.data.MovieContract;
+import com.example.iris.popularmovies.data.MovieContract.VideoEntry;
 import com.example.iris.popularmovies.data.MovieVideo;
 
 import org.json.JSONArray;
@@ -20,6 +24,7 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Vector;
 
 /**
  * Created by Iris on 22/08/2016.
@@ -28,15 +33,20 @@ public class FetchMovieVideoTask extends AsyncTask<String, Void, ArrayList<Movie
     private final String LOG_TAG = FetchMovieTask.class.getSimpleName();
     private final Context mContext;
     private AsyncTaskCompleteListener<ArrayList<MovieVideo>> listener;
+    private String movieId;
 
     public FetchMovieVideoTask(Context context, AsyncTaskCompleteListener<ArrayList<MovieVideo>> listener) {
         this.mContext = context;
         this.listener = listener;
     }
 
+    public FetchMovieVideoTask(Context context) {
+        this.mContext = context;
+    }
+
     /**
      * Parse the JSON string return by API
-     * @param movieJsonStr
+     * @param videoJsonStr
      * @return
      * @throws JSONException
      */
@@ -55,7 +65,7 @@ public class FetchMovieVideoTask extends AsyncTask<String, Void, ArrayList<Movie
             JSONObject videoJson = new JSONObject(videoJsonStr);
             JSONArray videoArray = videoJson.getJSONArray(MDB_RESULTS);
 
-            ArrayList<MovieVideo> videoList = new ArrayList<>();
+            Vector<ContentValues> cVVector = new Vector<>(videoArray.length());
 
             for(int i = 0; i < videoArray.length(); i++) {
                 // values to be collected
@@ -70,16 +80,30 @@ public class FetchMovieVideoTask extends AsyncTask<String, Void, ArrayList<Movie
                 site = currentMovie.getString(MDB_SITE);
                 type = currentMovie.getString(MDB_TYPE);
 
-                videoList.add(new MovieVideo(
-                        videoId,
-                        key,
-                        name,
-                        site,
-                        type
-                ));
+                ContentValues videoValues = new ContentValues();
+                videoValues.put(VideoEntry.COLUMN_MOVIE_KEY, movieId);
+                videoValues.put(VideoEntry.COLUMN_VIDEO_ID, videoId);
+                videoValues.put(VideoEntry.COLUMN_KEY, key);
+                videoValues.put(VideoEntry.COLUMN_NAME, name);
+                videoValues.put(VideoEntry.COLUMN_SITE, site);
+
+                cVVector.add(videoValues);
+
             }
 
-            return videoList;
+            int inserted = 0;
+
+            if(cVVector.size() > 0) {
+                ContentValues[] cvArray = new ContentValues[cVVector.size()];
+                cVVector.toArray(cvArray);
+
+                Uri videoUri = VideoEntry.buildMovieVideoListUri(movieId);
+                inserted = mContext.getContentResolver().bulkInsert(videoUri, cvArray);
+            }
+
+            Log.d(LOG_TAG, "FetchMovieVideoTask Complete. " + inserted + " Inserted.");
+
+            return null;
 
         } catch (JSONException e) {
             Log.e(LOG_TAG, e.getMessage(), e);
@@ -95,7 +119,7 @@ public class FetchMovieVideoTask extends AsyncTask<String, Void, ArrayList<Movie
         BufferedReader reader;
 
         String videoJsonStr;
-        String movieId = params[0];
+        movieId = params[0];
 
         try {
             final String MOVIES_BASE_URL = "https://api.themoviedb.org/3";

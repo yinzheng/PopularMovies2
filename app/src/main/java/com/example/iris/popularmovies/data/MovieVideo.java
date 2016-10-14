@@ -7,14 +7,13 @@ import android.os.Parcelable;
  * Created by Iris on 23/08/2016.
  */
 public class MovieVideo implements Parcelable{
-    private String ID, key, name, site, type;
+    private String ID, key, name, site;
 
-    public MovieVideo(String ID, String key, String name, String site, String type) {
+    public MovieVideo(String ID, String key, String name, String site) {
         this.ID = ID;
         this.key = key;
         this.name = name;
         this.site = site;
-        this.type = type;
     }
 
     private MovieVideo(Parcel in) {
@@ -22,7 +21,6 @@ public class MovieVideo implements Parcelable{
         this.key = in.readString();
         this.name = in.readString();
         this.site = in.readString();
-        this.type = in.readString();
     }
 
     @Override
@@ -31,7 +29,6 @@ public class MovieVideo implements Parcelable{
         parcel.writeString(key);
         parcel.writeString(name);
         parcel.writeString(site);
-        parcel.writeString(type);
     }
 
     @Override
@@ -80,14 +77,6 @@ public class MovieVideo implements Parcelable{
 
     public void setSite(String site) {
         this.site = site;
-    }
-
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
     }
 
     public String toString() {

@@ -16,9 +16,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.ImageView;
-import android.widget.TextView;
+import android.widget.Toast;
 
 import com.example.iris.popularmovies.data.Movie;
 import com.example.iris.popularmovies.data.MovieContract;
@@ -26,12 +24,9 @@ import com.example.iris.popularmovies.data.MovieReview;
 import com.example.iris.popularmovies.data.MovieVideo;
 import com.example.iris.popularmovies.network.FetchMovieReviewTask;
 import com.example.iris.popularmovies.network.FetchMovieVideoTask;
-import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
-
-import butterknife.BindView;
-import butterknife.ButterKnife;
+import java.util.List;
 
 /**
  * A placeholder fragment containing a simple view.
@@ -42,7 +37,7 @@ public class DetailActivityFragment extends Fragment implements LoaderManager.Lo
     private static final int MOVIE_LOADER_REVIEW = 2;
 
     private String LOG_TAG = DetailActivity.class.getSimpleName();
-    private final String MOVIE_ITEM = "MOVIE";
+    private final String MOVIE_STR = "MOVIE";
     private final String VIDEO_LOADED = "VIDEO_LOADED";
     private final String REVIEW_LOADED = "REVIEW_LOADED";
     private Movie mMovie;
@@ -81,30 +76,55 @@ public class DetailActivityFragment extends Fragment implements LoaderManager.Lo
     static final int COL_MOVIE_VOTED_AVERAGE = 7;
     static final int COL_MOVIE_FAVOURITE = 8;
 
+    private static final String[] VIDEO_COLUMNS = {
+            MovieContract.VideoEntry.COLUMN_VIDEO_ID,
+            MovieContract.VideoEntry.COLUMN_NAME,
+            MovieContract.VideoEntry.COLUMN_KEY,
+            MovieContract.VideoEntry.COLUMN_SITE
+    };
+
+    static final int COL_VIDEO_ID = 0;
+    static final int COL_VIDEO_NAME = 1;
+    static final int COL_VIDEO_KEY = 2;
+    static final int COL_VIDEO_SITE = 3;
+
+    private static final String[] REVIEW_COLUMNS = {
+            MovieContract.ReviewEntry.COLUMN_REVIEW_ID,
+            MovieContract.ReviewEntry.COLUMN_AUTHOR,
+            MovieContract.ReviewEntry.COLUMN_CONTENT,
+            MovieContract.ReviewEntry.COLUMN_URL
+    };
+
+    static final int COL_REVIEW_ID = 0;
+    static final int COL_REVIEW_AUTHOR = 1;
+    static final int COL_REVIEW_CONTENT = 2;
+    static final int COL_REVIEW_URL = 3;
+
     public DetailActivityFragment() {
     }
 
     @Override
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
-        getLoaderManager().initLoader(MOVIE_LOADER_ITEM, null, this);
         super.onActivityCreated(savedInstanceState);
+        getLoaderManager().initLoader(MOVIE_LOADER_ITEM, null, this);
+        getLoaderManager().initLoader(MOVIE_LOADER_VIDEO, null, this);
+        getLoaderManager().initLoader(MOVIE_LOADER_REVIEW, null, this);
     }
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-
-
-        if(savedInstanceState == null || !savedInstanceState.containsKey(MOVIE_ITEM)) {
+        if(savedInstanceState == null || !savedInstanceState.containsKey(MOVIE_STR)) {
             Intent intent = getActivity().getIntent();
             if(intent != null) {
                 mMovieStr = intent.getDataString();
-                mMovieUri = Uri.parse(mMovieStr);
+
             }
         } else {
-            mMovie = savedInstanceState.getParcelable(MOVIE_ITEM);
+            mMovieStr = savedInstanceState.getString(MOVIE_STR);
         }
+        mMovieUri = Uri.parse(mMovieStr);
 
         if(savedInstanceState == null || !savedInstanceState.containsKey(VIDEO_LOADED)) {
             mVideoLoaded = false;
@@ -117,11 +137,12 @@ public class DetailActivityFragment extends Fragment implements LoaderManager.Lo
         } else {
             mReviewLoaded = savedInstanceState.getBoolean(REVIEW_LOADED);
         }
+
     }
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
-        outState.putParcelable(MOVIE_ITEM, mMovie);
+        outState.putString(MOVIE_STR, mMovieStr);
         outState.putBoolean(VIDEO_LOADED, mVideoLoaded);
         outState.putBoolean(REVIEW_LOADED, mReviewLoaded);
         super.onSaveInstanceState(outState);
@@ -136,17 +157,23 @@ public class DetailActivityFragment extends Fragment implements LoaderManager.Lo
         mMovieDetailView = (RecyclerView) rootView.findViewById(R.id.recyclerview_detail);
         mMovieDetailView.setLayoutManager(new LinearLayoutManager(getActivity()));
 
-        mDetailAdapter = new DetailAdapter(getContext());
+        mDetailAdapter = new DetailAdapter(getContext(), new DetailAdapter.MovieVideoAdapterOnClickHandler() {
+            @Override
+            public void onClick(String key, DetailAdapter.ViewHolderVideo vh) {
+                final String youtubePlayUrl = "http://www.youtube.com/watch?v=";
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(youtubePlayUrl + key)));
+            }
+        });
 
         mMovieDetailView.setAdapter(mDetailAdapter);
 
         if(!mVideoLoaded) {
-            new FetchMovieVideoTask(getContext(), new FetchVideosTaskCompleteListener())
+            new FetchMovieVideoTask(getContext(), new FetchVideosTaskCompleteListener(this))
                     .execute(String.valueOf(ContentUris.parseId(mMovieUri)));
         }
 
         if(!mReviewLoaded) {
-            new FetchMovieReviewTask(getContext(), new FetchReviewsTaskCompleteListener())
+            new FetchMovieReviewTask(getContext(), new FetchReviewsTaskCompleteListener(this))
                     .execute(String.valueOf(ContentUris.parseId(mMovieUri)));
         }
 
@@ -157,14 +184,31 @@ public class DetailActivityFragment extends Fragment implements LoaderManager.Lo
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
 
         if ( mMovieUri != null ) {
+            switch (id) {
+                case MOVIE_LOADER_ITEM:
+                    return new CursorLoader(getActivity(),
+                            mMovieUri,
+                            MOVIE_COLUMNS,
+                            null,
+                            null,
+                            null);
 
-            return new CursorLoader(getActivity(),
-                    mMovieUri,
-                    MOVIE_COLUMNS,
-                    null,
-                    null,
-                    null);
+                case MOVIE_LOADER_VIDEO:
+                    return new CursorLoader(getActivity(),
+                            mMovieUri.buildUpon().appendPath("videos").build(),
+                            VIDEO_COLUMNS,
+                            null,
+                            null,
+                            null);
 
+                case MOVIE_LOADER_REVIEW:
+                    return new CursorLoader(getActivity(),
+                            mMovieUri.buildUpon().appendPath("reviews").build(),
+                            REVIEW_COLUMNS,
+                            null,
+                            null,
+                            null);
+            }
         }
 
         return null;
@@ -191,8 +235,37 @@ public class DetailActivityFragment extends Fragment implements LoaderManager.Lo
 
                     getActivity().setTitle(mMovie.getTitle()); // set title for the detail view
 
-                    mDetailAdapter.add(mMovie);
+                    mDetailAdapter.addMovie(mMovie);
                 }
+                break;
+            case MOVIE_LOADER_VIDEO:
+                List<MovieVideo> videoList = new ArrayList<>();
+                while (data.moveToNext()) {
+                    String videoId = data.getString(COL_VIDEO_ID);
+                    String videoKey = data.getString(COL_VIDEO_KEY);
+                    String videoName = data.getString(COL_VIDEO_NAME);
+                    String videoSite = data.getString(COL_VIDEO_SITE);
+
+                    MovieVideo mVideo = new MovieVideo(videoId, videoKey, videoName, videoSite);
+                    videoList.add(mVideo);
+                }
+
+                mDetailAdapter.addVideos(videoList);
+                break;
+            case MOVIE_LOADER_REVIEW:
+                List<MovieReview> reviewList = new ArrayList<>();
+                while (data.moveToNext()) {
+                    String reviewId = data.getString(COL_REVIEW_ID);
+                    String reviewAuthor = data.getString(COL_REVIEW_AUTHOR);
+                    String reviewContent = data.getString(COL_REVIEW_CONTENT);
+                    String reviewUrl = data.getString(COL_REVIEW_URL);
+
+                    MovieReview mReview = new MovieReview(reviewId, reviewAuthor, reviewContent, reviewUrl);
+                    reviewList.add(mReview);
+
+                }
+
+                mDetailAdapter.addReviews(reviewList);
                 break;
         }
 
@@ -206,30 +279,36 @@ public class DetailActivityFragment extends Fragment implements LoaderManager.Lo
     public class FetchVideosTaskCompleteListener
             implements AsyncTaskCompleteListener<ArrayList<MovieVideo>>
     {
+        private DetailActivityFragment fragment;
+
+        public FetchVideosTaskCompleteListener(DetailActivityFragment fragment) {
+            super();
+            this.fragment = fragment;
+        }
 
         @Override
-        public void onTaskComplete(ArrayList<MovieVideo> data)
-        {
-            Log.v(LOG_TAG, data.toString());
-            if(data != null) {
-                mVideoLoaded = true;
-//                mMovie.setVideos(data);
-            }
+        public void onTaskComplete(ArrayList<MovieVideo> data) {
+            mVideoLoaded = true;
+            getLoaderManager().initLoader(MOVIE_LOADER_VIDEO, null, fragment);
         }
+
     }
 
     public class FetchReviewsTaskCompleteListener
             implements AsyncTaskCompleteListener<ArrayList<MovieReview>>
     {
+        private DetailActivityFragment fragment;
+
+        public FetchReviewsTaskCompleteListener(DetailActivityFragment fragment) {
+            super();
+            this.fragment = fragment;
+        }
 
         @Override
         public void onTaskComplete(ArrayList<MovieReview> data)
         {
-            Log.v(LOG_TAG, data.toString());
-            if(data != null) {
-                mReviewLoaded = true;
-//                mMovie.setReviews(data);
-            }
+            mReviewLoaded = true;
+            getLoaderManager().initLoader(MOVIE_LOADER_REVIEW, null, fragment);
         }
     }
 }

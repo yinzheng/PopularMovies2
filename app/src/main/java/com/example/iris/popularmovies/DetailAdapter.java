@@ -1,20 +1,29 @@
 package com.example.iris.popularmovies;
 
+import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.example.iris.popularmovies.data.Movie;
+import com.example.iris.popularmovies.data.MovieContract;
+import com.example.iris.popularmovies.data.MovieReview;
+import com.example.iris.popularmovies.data.MovieVideo;
 import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -26,20 +35,37 @@ import butterknife.ButterKnife;
 public class DetailAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private final String LOG_TAG = MovieAdapter.class.getSimpleName();
     private final Context mContext;
-    private List<Object> items;
+    private final MovieVideoAdapterOnClickHandler mVideoClickHandler;
     private Movie mMovie;
+    private List<MovieVideo> mMovieVideoList;
+    private MovieVideo mMovieVideo;
+    private List<MovieReview> mMovieReviewList;
+    private MovieReview mMovieReview;
     private static final int VIEW_TYPE_INFO = 0;
     private static final int VIEW_TYPE_VIDEO = 1;
     private static final int VIEW_TYPE_REVIEW = 2;
 
-    public DetailAdapter(Context context) {
+    public DetailAdapter(Context context, MovieVideoAdapterOnClickHandler dh) {
         this.mContext = context;
-        this.items = new ArrayList<Object>();
+        this.mVideoClickHandler = dh;
+        mMovie = null;
+        this.mMovieVideoList = new ArrayList<>();
+        this.mMovieReviewList = new ArrayList<>();
     }
 
-    public void add(Object item) {
-        items.add(item);
-        notifyItemChanged(items.size()-1);
+    public void addMovie(Movie movie) {
+        mMovie = movie;
+        notifyDataSetChanged();
+    }
+
+    public void addVideos(List<MovieVideo> videos) {
+        mMovieVideoList = videos;
+        notifyDataSetChanged();
+    }
+
+    public void addReviews(List<MovieReview> reviews) {
+        mMovieReviewList = reviews;
+        notifyDataSetChanged();
     }
 
     @Override
@@ -56,21 +82,18 @@ public class DetailAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
 
             case VIEW_TYPE_VIDEO:
 
-                View v2 = inflater.inflate(R.layout.view_type_info, parent, false);
-                viewHolder = new ViewHolderInfo(v2);
+                View v2 = inflater.inflate(R.layout.view_type_video, parent, false);
+                viewHolder = new ViewHolderVideo(v2);
                 break;
 
             case VIEW_TYPE_REVIEW:
 
-                View v3 = inflater.inflate(R.layout.view_type_info, parent, false);
-                viewHolder = new ViewHolderInfo(v3);
+                View v3 = inflater.inflate(R.layout.view_type_review, parent, false);
+                viewHolder = new ViewHolderReview(v3);
                 break;
 
             default:
-
-                View v4 = inflater.inflate(R.layout.view_type_info, parent, false);
-                viewHolder = new ViewHolderInfo(v4);
-                break;
+                throw new UnsupportedOperationException("Unknown View Type.");
         }
 
         return viewHolder;
@@ -78,11 +101,16 @@ public class DetailAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
 
     @Override
     public int getItemViewType(int position) {
-        if (items.get(position) instanceof Movie) {
-            mMovie = (Movie) items.get(position);
+        if (Integer.valueOf(0).equals(position)) {
             return VIEW_TYPE_INFO;
+        } else if (Integer.valueOf(position) <= mMovieVideoList.size()) {
+            mMovieVideo = (MovieVideo) mMovieVideoList.get(position - 1);
+            return VIEW_TYPE_VIDEO;
+        }  else if (Integer.valueOf(position) > mMovieVideoList.size()){
+            mMovieReview = (MovieReview) mMovieReviewList.get(position - 1 - mMovieVideoList.size());
+            return VIEW_TYPE_REVIEW;
         } else {
-            return VIEW_TYPE_INFO;
+            throw new UnsupportedOperationException("Unknown View Type.");
         }
     }
 
@@ -93,6 +121,14 @@ public class DetailAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                 ViewHolderInfo vh1 = (ViewHolderInfo) viewHolder;
                 configureViewHolderInfo(vh1, position);
                 break;
+            case VIEW_TYPE_VIDEO:
+                ViewHolderVideo vh2 = (ViewHolderVideo) viewHolder;
+                configureViewHolderVideo(vh2, position);
+                break;
+            case VIEW_TYPE_REVIEW:
+                ViewHolderReview vh3 = (ViewHolderReview) viewHolder;
+                configureViewHolderReview(vh3, position);
+                break;
             default:
 
         }
@@ -101,18 +137,65 @@ public class DetailAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
 
     @Override
     public int getItemCount() {
-        return this.items.size();
+        return 1 + this.mMovieVideoList.size() + this.mMovieReviewList.size();
+    }
+
+    private String getFavouriteText(int value) {
+        return (Integer.valueOf(value).equals(0))? "FAVOURITE" : "UNFAVOURITE";
     }
 
 
-    private void configureViewHolderInfo(ViewHolderInfo vh1, int position) {
-        Picasso.with(mContext).load(mMovie.getPosterPath()).into(vh1.getDetailPoster());
-        vh1.getDetailTitle().setText(mMovie.getOriginalTitle());
-        vh1.getDetailOverview().setText(mMovie.getOverview());
-        vh1.getDetailReleaseDate().setText(Utility.formatDate(mMovie.getReleaseDate()));
-        vh1.getDetailVotedAverage().setText(String.valueOf(mMovie.getVoteAverage()));
-        vh1.getDetailFavourite().setText(String.valueOf(mMovie.getFavourite()));
+    private void configureViewHolderInfo(ViewHolderInfo vh, int position) {
+        if(mMovie == null) { return; }
+        Picasso.with(mContext).load(mMovie.getPosterPath()).into(vh.getDetailPoster());
+        vh.getDetailTitle().setText(mMovie.getOriginalTitle());
+        vh.getDetailOverview().setText(mMovie.getOverview());
+        vh.getDetailReleaseDate().setText(Utility.formatDate(mMovie.getReleaseDate()));
+        vh.getDetailVotedAverage().setText(String.valueOf(mMovie.getVoteAverage()));
+        vh.getDetailFavourite().setText(getFavouriteText(mMovie.getFavourite()));
 
+        vh.getDetailFavourite().setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+
+                Uri contentUri = MovieContract.MovieEntry.buildMovieFavouriteUri(mMovie.getID());
+
+                if(Integer.valueOf(mMovie.getFavourite()).equals(0)) {
+                    mMovie.setFavourite(1);
+
+                    ContentValues values = new ContentValues();
+                    values.put(MovieContract.MovieListEntry.COLUMN_MOVIE_KEY, mMovie.getID());
+                    values.put(MovieContract.MovieListEntry.COLUMN_LIST_TYPE,
+                            MovieContract.MovieListEntry.MOVIE_TYPE_FAVOURITE);
+
+                    mContext.getContentResolver().insert(contentUri, values);
+                    
+                } else {
+                    mMovie.setFavourite(0);
+
+                    String[] movie = {String.valueOf(mMovie.getID()),
+                            MovieContract.MovieListEntry.MOVIE_TYPE_FAVOURITE};
+
+                    mContext.getContentResolver().delete(contentUri,
+                            MovieContract.ReviewEntry.COLUMN_MOVIE_KEY + "=? AND " +
+                                    MovieContract.MovieListEntry.COLUMN_LIST_TYPE + "=?",
+                            movie
+                    );
+                }
+
+                Button clickedButton = (Button)v;
+                clickedButton.setText(getFavouriteText(mMovie.getFavourite()));
+            }
+        });
+
+    }
+
+    private void configureViewHolderVideo(ViewHolderVideo vh, int position) {
+        vh.getVideoTitle().setText(String.valueOf(mMovieVideo.getName()));
+    }
+
+    private void configureViewHolderReview(ViewHolderReview vh, int position) {
+        vh.getReviewAuthor().setText(String.valueOf(mMovieReview.getAuthor()));
+        vh.getReviewContent().setText(String.valueOf(mMovieReview.getContent()));
     }
 
     public class ViewHolderInfo extends RecyclerView.ViewHolder {
@@ -178,10 +261,57 @@ public class DetailAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         }
     }
 
-    public class ViewHolderVideo extends RecyclerView.ViewHolder {
+    public class ViewHolderVideo extends RecyclerView.ViewHolder implements View.OnClickListener {
+
+        @BindView(R.id.video_title) TextView videoTitle;
         public ViewHolderVideo (View view) {
             super(view);
             ButterKnife.bind(this, view);
+            view.setOnClickListener(this);
+        }
+
+        @Override
+        public void onClick(View view) {
+            int adapterPosition = getAdapterPosition();
+            MovieVideo video = mMovieVideoList.get(adapterPosition - 1);
+            mVideoClickHandler.onClick(video.getKey(), this);
+        }
+
+        public TextView getVideoTitle() {
+            return videoTitle;
+        }
+
+        public void setVideoTitle(TextView videoTitle) {
+            this.videoTitle = videoTitle;
+        }
+    }
+
+    public interface MovieVideoAdapterOnClickHandler {
+        void onClick(String key, ViewHolderVideo vh);
+    }
+
+    public class ViewHolderReview extends RecyclerView.ViewHolder {
+        @BindView(R.id.review_author) TextView reviewAuthor;
+        @BindView(R.id.review_content) TextView reviewContent;
+        public ViewHolderReview (View view) {
+            super(view);
+            ButterKnife.bind(this, view);
+        }
+
+        public TextView getReviewAuthor() {
+            return reviewAuthor;
+        }
+
+        public void setReviewAuthor(TextView reviewAuthor) {
+            this.reviewAuthor = reviewAuthor;
+        }
+
+        public TextView getReviewContent() {
+            return reviewContent;
+        }
+
+        public void setReviewContent(TextView reviewContent) {
+            this.reviewContent = reviewContent;
         }
     }
 }
