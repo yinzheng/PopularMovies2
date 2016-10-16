@@ -68,6 +68,12 @@ public class DetailAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         notifyDataSetChanged();
     }
 
+    public void resetAll() {
+        mMovie = null;
+        mMovieVideoList = null;
+        mMovieReviewList = null;
+    }
+
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         RecyclerView.ViewHolder viewHolder;
@@ -194,7 +200,8 @@ public class DetailAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
     }
 
     private void configureViewHolderReview(ViewHolderReview vh, int position) {
-        vh.getReviewAuthor().setText(String.valueOf(mMovieReview.getAuthor()));
+        vh.getReviewAuthor().setText(String.format(mContext.getString(R.string.format_review_title),
+                mMovieReview.getAuthor()));
         vh.getReviewContent().setText(String.valueOf(mMovieReview.getContent()));
     }
 

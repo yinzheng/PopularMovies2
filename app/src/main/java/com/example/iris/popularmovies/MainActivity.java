@@ -1,22 +1,45 @@
 package com.example.iris.popularmovies;
 
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements MoviesFragment.Callback {
+
+    private static final String DETAILFRAGMENT_TAG = "DFTAG";
+    private String mSortOrder;
+    private Boolean mTwoPane;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        mSortOrder = Utility.getPreferedSortOrder(this);
+
         setContentView(R.layout.activity_main);
+
+        if(findViewById(R.id.movie_detail_container) != null) {
+            mTwoPane = true;
+
+            if(savedInstanceState == null) {
+                getSupportFragmentManager().beginTransaction()
+                        .replace(R.id.movie_detail_container,
+                                new DetailActivityFragment(), DETAILFRAGMENT_TAG)
+                        .commit();
+            }
+        } else {
+            mTwoPane = false;
+        }
+
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
         getSupportActionBar().setElevation(0f);
+
     }
 
     @Override
@@ -40,5 +63,22 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        String sortOrder = Utility.getPreferedSortOrder(this);
+
+        if(sortOrder != null && !sortOrder.equals(mSortOrder)) {
+//            MoviesFragment mf = (MoviesFragment)getSupportFragmentManager().findFragmentById(R.id.)
+        }
+    }
+
+
+    @Override
+    public void onItemSelected(Uri uri) {
+
     }
 }

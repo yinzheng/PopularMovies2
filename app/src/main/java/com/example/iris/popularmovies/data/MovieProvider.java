@@ -270,15 +270,18 @@ public class MovieProvider extends ContentProvider {
     public int delete(Uri uri, String where, String[] whereArgs) {
         final SQLiteDatabase db = mMovieHelper.getWritableDatabase();
         final int match = sUriMatcher.match(uri);
+        int retInt;
 
         switch (match) {
             case MOVIE_LIST_POPULAR:
             case MOVIE_LIST_TOP_RATED:
+                getContext().getContentResolver().notifyChange(uri, null);
                 return db.delete(MovieContract.MovieListEntry.TABLE_NAME,
                         where,
                         whereArgs
                 );
             case MOVIE_FAVOURITE: {
+                getContext().getContentResolver().notifyChange(uri, null);
                 return db.delete(MovieContract.MovieListEntry.TABLE_NAME, where, whereArgs);
             }
             default:

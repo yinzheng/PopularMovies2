@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Parcel;
 import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -28,6 +29,9 @@ import com.example.iris.popularmovies.network.FetchMovieTask;
 public class MoviesFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor>,
         SharedPreferences.OnSharedPreferenceChangeListener {
 
+
+    private final String LOG_TAG = MoviesFragment.class.getSimpleName();
+
     private static final int MOVIE_LOADER_POPULAR = 0;
     private static final int MOVIE_LOADER_TOP_RATED = 1;
     private static final int MOVIE_LOADER_FAVOURITE = 2;
@@ -36,15 +40,12 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
     private static final String MOVIE_TOP_RATED = "top_rated";
     private static final String MOVIE_FAVOURITE = "favourite";
 
-    private final String LOG_TAG = MoviesFragment.class.getSimpleName();
+    private static final String LIST_LOADED = "LIST_LOADED";
+    private boolean mListLoaded = false;
 
-    private static final String SELECTED_KEY = "selected_position";
     private MovieAdapter mMovieAdapter;
     private RecyclerView mMovieGridView;
     private TextView mMovieEmptyView;
-    private int mPosition = RecyclerView.NO_POSITION;
-    private String LIST_LOADED = "LIST_LOADED";
-    private boolean mListLoaded = false;
 
     private static final String[] MOVIE_COLUMNS = {
             MovieContract.MovieEntry.TABLE_NAME + "." + MovieContract.MovieEntry._ID,
@@ -69,14 +70,19 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
     static final int COL_MOVIE_VOTED_AVERAGE = 7;
 
     @Override
-    public void onActivityCreated(@Nullable Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
 
-        if(savedInstanceState == null || !savedInstanceState.containsKey(LIST_LOADED)) {
+        if(savedInstanceState == null) {
             mListLoaded = false;
         } else {
             mListLoaded = savedInstanceState.getBoolean(LIST_LOADED);
         }
 
+    }
+
+    @Override
+    public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         String sortOrder = Utility.getPreferedSortOrder(getContext());
         switch (sortOrder) {
             case MOVIE_POPULAR:
@@ -153,7 +159,7 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
         mMovieEmptyView = (TextView) rootView.findViewById(R.id.recyclerview_movies_empty);
 
         mMovieGridView = (RecyclerView) rootView.findViewById(R.id.recyclerview_movies);
-        mMovieGridView.setLayoutManager(new GridLayoutManager(getActivity(), 2));
+        mMovieGridView.setLayoutManager(new GridLayoutManager(getActivity(), Utility.calculateNoOfColumns(getContext())));
         mMovieGridView.setHasFixedSize(true);
 
         mMovieAdapter = new MovieAdapter(getActivity(), new MovieAdapter.MovieAdapterOnClickHandler() {
@@ -163,8 +169,6 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
                 Intent intent = new Intent(getActivity(), DetailActivity.class)
                         .setData(MovieContract.MovieEntry.buildMovieUri(id));
                 startActivity(intent);
-
-                mPosition = vh.getAdapterPosition();
             }
         }, mMovieEmptyView);
 

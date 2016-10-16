@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.icu.text.SimpleDateFormat;
 import android.preference.PreferenceManager;
+import android.util.DisplayMetrics;
 
 import java.util.Date;
 
@@ -28,5 +29,12 @@ public class Utility {
         }
 
         return dateString;
+    }
+
+    public static int calculateNoOfColumns(Context context) {
+        DisplayMetrics displayMetrics = context.getResources().getDisplayMetrics();
+        float dpWidth = displayMetrics.widthPixels / displayMetrics.density;
+        int noOfColumns = (int) (dpWidth / 180);
+        return noOfColumns;
     }
 }

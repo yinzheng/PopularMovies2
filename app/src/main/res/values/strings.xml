@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:xliff="http://schemas.android.com/apk/res-auto">
     <string name="app_name">Popular Movies</string>
     <string name="action_settings">Settings</string>
     <string name="title_activity_detail">Detail</string>
@@ -25,4 +25,7 @@
 
     <string name="content_authority">com.example.iris.popularmovies.app</string>
     <string name="empty_movie_list">No items found.</string>
+
+    <string name="format_review_title">Review by: <xliff:g id="author">%1$s</xliff:g></string>
+
 </resources>
