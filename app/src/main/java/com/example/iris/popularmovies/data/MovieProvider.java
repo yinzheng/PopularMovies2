@@ -126,7 +126,7 @@ public class MovieProvider extends ContentProvider {
                         projection,
                         MovieContract.MovieEntry.TABLE_NAME +
                                 "." + MovieContract.MovieEntry.COLUMN_MOVIE_ID +
-                                " = '" + id + "'",
+                                " =? ",
                         selectionArgs,
                         sortOrder
                 );
@@ -143,15 +143,10 @@ public class MovieProvider extends ContentProvider {
                 break;
             }
             case MOVIE_VIDEOS: {
-                String[] segments = uri.getPath().split("/");
-                String idStr = segments[segments.length-2];
-                int id = Integer.parseInt(idStr);
-
                 retCursor = mMovieHelper.getReadableDatabase().query(
                         MovieContract.VideoEntry.TABLE_NAME,
                         projection,
-                        MovieContract.VideoEntry.COLUMN_MOVIE_KEY +
-                                " = '" + id + "'",
+                        MovieContract.VideoEntry.COLUMN_MOVIE_KEY + "=?",
                         selectionArgs,
                         null,
                         null,
@@ -161,15 +156,10 @@ public class MovieProvider extends ContentProvider {
                 break;
             }
             case MOVIE_REVIEWS: {
-                String[] segments = uri.getPath().split("/");
-                String idStr = segments[segments.length-2];
-                int id = Integer.parseInt(idStr);
-
                 retCursor = mMovieHelper.getReadableDatabase().query(
                         MovieContract.ReviewEntry.TABLE_NAME,
                         projection,
-                        MovieContract.ReviewEntry.COLUMN_MOVIE_KEY +
-                                " = '" + id + "'",
+                        MovieContract.ReviewEntry.COLUMN_MOVIE_KEY + "=?",
                         selectionArgs,
                         null,
                         null,

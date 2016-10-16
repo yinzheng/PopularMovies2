@@ -88,7 +88,6 @@ public class FetchMovieVideoTask extends AsyncTask<String, Void, ArrayList<Movie
                 videoValues.put(VideoEntry.COLUMN_SITE, site);
 
                 cVVector.add(videoValues);
-
             }
 
             int inserted = 0;

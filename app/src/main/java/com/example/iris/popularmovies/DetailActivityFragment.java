@@ -178,13 +178,16 @@ public class DetailActivityFragment extends Fragment implements LoaderManager.Lo
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
 
         if ( mMovieUri == null ) { return null; }
+        long movieId = ContentUris.parseId(mMovieUri);
+        String[] mId = {String.valueOf(movieId)};
+
         switch (id) {
             case MOVIE_LOADER_ITEM:
                 return new CursorLoader(getActivity(),
                         mMovieUri,
                         MOVIE_COLUMNS,
                         null,
-                        null,
+                        mId,
                         null);
 
             case MOVIE_LOADER_VIDEO:
@@ -192,7 +195,7 @@ public class DetailActivityFragment extends Fragment implements LoaderManager.Lo
                         mMovieUri.buildUpon().appendPath("videos").build(),
                         VIDEO_COLUMNS,
                         null,
-                        null,
+                        mId,
                         null);
 
             case MOVIE_LOADER_REVIEW:
@@ -200,7 +203,7 @@ public class DetailActivityFragment extends Fragment implements LoaderManager.Lo
                         mMovieUri.buildUpon().appendPath("reviews").build(),
                         REVIEW_COLUMNS,
                         null,
-                        null,
+                        mId,
                         null);
             }
 
@@ -232,7 +235,7 @@ public class DetailActivityFragment extends Fragment implements LoaderManager.Lo
                 break;
             case MOVIE_LOADER_VIDEO:
                 mMovieVideoList = new ArrayList<>();
-                data.moveToFirst();
+                data.moveToPosition(-1);
                 while (data.moveToNext()) {
                     String videoId = data.getString(COL_VIDEO_ID);
                     String videoKey = data.getString(COL_VIDEO_KEY);
@@ -247,7 +250,7 @@ public class DetailActivityFragment extends Fragment implements LoaderManager.Lo
                 break;
             case MOVIE_LOADER_REVIEW:
                 mMovieReviewList = new ArrayList<>();
-                data.moveToFirst();
+                data.moveToPosition(-1);
                 while (data.moveToNext()) {
                     String reviewId = data.getString(COL_REVIEW_ID);
                     String reviewAuthor = data.getString(COL_REVIEW_AUTHOR);
