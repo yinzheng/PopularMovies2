@@ -143,7 +143,11 @@ public class DetailAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
 
     @Override
     public int getItemCount() {
-        return 1 + this.mMovieVideoList.size() + this.mMovieReviewList.size();
+        if(mMovie == null) {
+            return 0;
+        } else {
+            return 1 + this.mMovieVideoList.size() + this.mMovieReviewList.size();
+        }
     }
 
     private String getFavouriteText(int value) {

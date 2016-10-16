@@ -21,6 +21,8 @@ public class MainActivity extends AppCompatActivity implements MoviesFragment.Ca
         mSortOrder = Utility.getPreferedSortOrder(this);
 
         setContentView(R.layout.activity_main);
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
 
         if(findViewById(R.id.movie_detail_container) != null) {
             mTwoPane = true;
@@ -33,12 +35,8 @@ public class MainActivity extends AppCompatActivity implements MoviesFragment.Ca
             }
         } else {
             mTwoPane = false;
+            getSupportActionBar().setElevation(0f);
         }
-
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
-
-        getSupportActionBar().setElevation(0f);
 
     }
 
@@ -79,6 +77,21 @@ public class MainActivity extends AppCompatActivity implements MoviesFragment.Ca
 
     @Override
     public void onItemSelected(Uri uri) {
+        if(mTwoPane) {
+            Bundle args = new Bundle();
+            args.putParcelable(DetailActivityFragment.MOVIE_URI, uri);
 
+            DetailActivityFragment fragment = new DetailActivityFragment();
+            fragment.setArguments(args);
+
+            getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.movie_detail_container, fragment, DETAILFRAGMENT_TAG)
+                    .commit();
+
+        } else {
+            Intent intent = new Intent(this, DetailActivity.class)
+                    .setData(uri);
+            startActivity(intent);
+        }
     }
 }

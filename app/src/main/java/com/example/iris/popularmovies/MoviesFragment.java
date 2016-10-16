@@ -159,16 +159,13 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
         mMovieEmptyView = (TextView) rootView.findViewById(R.id.recyclerview_movies_empty);
 
         mMovieGridView = (RecyclerView) rootView.findViewById(R.id.recyclerview_movies);
-        mMovieGridView.setLayoutManager(new GridLayoutManager(getActivity(), Utility.calculateNoOfColumns(getContext())));
+        mMovieGridView.setLayoutManager(new GridLayoutManager(getActivity(), 2));
         mMovieGridView.setHasFixedSize(true);
 
         mMovieAdapter = new MovieAdapter(getActivity(), new MovieAdapter.MovieAdapterOnClickHandler() {
             @Override
             public void onClick(int id, MovieAdapter.ViewHolder vh) {
-//                ((Callback) getActivity()).onItemSelected(MovieContract.MovieEntry.buildMovieUri(id));
-                Intent intent = new Intent(getActivity(), DetailActivity.class)
-                        .setData(MovieContract.MovieEntry.buildMovieUri(id));
-                startActivity(intent);
+                ((Callback) getActivity()).onItemSelected(MovieContract.MovieEntry.buildMovieUri(id));
             }
         }, mMovieEmptyView);
 

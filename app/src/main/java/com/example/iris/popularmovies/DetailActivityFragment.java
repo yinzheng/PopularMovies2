@@ -44,7 +44,7 @@ public class DetailActivityFragment extends Fragment implements LoaderManager.Lo
     private List<MovieVideo> mMovieVideoList;
     private List<MovieReview> mMovieReviewList;
 
-    private String mMovieStr;
+    public static final String MOVIE_URI = "movie_uri";
     private Uri mMovieUri;
 
     private boolean mVideoLoaded = false;
@@ -111,34 +111,26 @@ public class DetailActivityFragment extends Fragment implements LoaderManager.Lo
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        Bundle arguments = getArguments();
+
+        if(arguments != null) {
+            mMovieUri = arguments.getParcelable(DetailActivityFragment.MOVIE_URI);
+        }
+
         if(savedInstanceState == null) {
-            Intent intent = getActivity().getIntent();
-
-            if (intent == null || intent.getData() == null) {
-                return;
-            } else {
-                mMovieStr = intent.getDataString();
-                mMovieUri = Uri.parse(mMovieStr);
-            }
-
             mVideoLoaded = false;
             mReviewLoaded = false;
         } else {
-
-            mMovieStr = savedInstanceState.getString(MOVIE_STR);
-            mMovieUri = Uri.parse(mMovieStr);
-
             mVideoLoaded = savedInstanceState.getBoolean(VIDEO_LOADED);
             mReviewLoaded = savedInstanceState.getBoolean(REVIEW_LOADED);
-
         }
 
-        if(!mVideoLoaded) {
+        if(!mVideoLoaded && mMovieUri != null) {
             new FetchMovieVideoTask(getContext(), new FetchVideosTaskCompleteListener(this))
                     .execute(String.valueOf(ContentUris.parseId(mMovieUri)));
         }
 
-        if(!mReviewLoaded) {
+        if(!mReviewLoaded && mMovieUri != null) {
             new FetchMovieReviewTask(getContext(), new FetchReviewsTaskCompleteListener(this))
                     .execute(String.valueOf(ContentUris.parseId(mMovieUri)));
         }
@@ -148,7 +140,6 @@ public class DetailActivityFragment extends Fragment implements LoaderManager.Lo
     @Override
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
-
         getLoaderManager().initLoader(MOVIE_LOADER_ITEM, null, this);
         getLoaderManager().initLoader(MOVIE_LOADER_VIDEO, null, this);
         getLoaderManager().initLoader(MOVIE_LOADER_REVIEW, null, this);
@@ -156,7 +147,6 @@ public class DetailActivityFragment extends Fragment implements LoaderManager.Lo
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
-        outState.putString(MOVIE_STR, mMovieStr);
         outState.putBoolean(VIDEO_LOADED, mVideoLoaded);
         outState.putBoolean(REVIEW_LOADED, mReviewLoaded);
         super.onSaveInstanceState(outState);
@@ -186,11 +176,6 @@ public class DetailActivityFragment extends Fragment implements LoaderManager.Lo
 
     @Override
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
-
-        Intent intent = getActivity().getIntent();
-        if (intent == null || intent.getData() == null) {
-            return null;
-        }
 
         if ( mMovieUri == null ) { return null; }
         switch (id) {
@@ -240,7 +225,7 @@ public class DetailActivityFragment extends Fragment implements LoaderManager.Lo
                     mMovie = new Movie(movieId, movieTitle, movieOriginalTitle, movieReleaseDate,
                             movieOverview, movieVotedAverage, moviePosterPath, movieFavourite);
 
-                    getActivity().setTitle(mMovie.getTitle()); // set title for the detail view
+//                    getActivity().setTitle(mMovie.getTitle()); // set title for the detail view
 
                     mDetailAdapter.addMovie(mMovie);
                 }
