@@ -244,6 +244,9 @@ public class MovieProvider extends ContentProvider {
             case MOVIE_FAVOURITE: {
                 db.insert(MovieContract.MovieListEntry.TABLE_NAME,
                         null, contentValues);
+                getContext().getContentResolver().notifyChange(
+                        MovieContract.MovieListEntry.buildMovieListUri(
+                                MovieContract.MovieListEntry.MOVIE_TYPE_FAVOURITE), null);
                 break;
             }
 

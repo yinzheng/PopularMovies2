@@ -70,7 +70,14 @@ public class MainActivity extends AppCompatActivity implements MoviesFragment.Ca
         String sortOrder = Utility.getPreferedSortOrder(this);
 
         if(sortOrder != null && !sortOrder.equals(mSortOrder)) {
-//            MoviesFragment mf = (MoviesFragment)getSupportFragmentManager().findFragmentById(R.id.)
+            MoviesFragment mf = (MoviesFragment)getSupportFragmentManager()
+                    .findFragmentById(R.id.movie_list_fragment);
+
+            if( null != mf ) {
+                mf.onListChanged();
+            }
+
+            mSortOrder = sortOrder;
         }
     }
 

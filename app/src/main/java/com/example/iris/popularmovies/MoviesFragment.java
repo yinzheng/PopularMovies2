@@ -115,8 +115,7 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
         super.onSaveInstanceState(outState);
     }
 
-    private void onListChanged() {
-        Log.v(LOG_TAG, "change called");
+    public void onListChanged() {
         String sortOrder = Utility.getPreferedSortOrder(getContext());
         switch (sortOrder) {
             case MOVIE_POPULAR:
